@@ -45,7 +45,8 @@ pip install -r backend/requirements.txt
 Create `/opt/audiobook/backend/.env`:
 
 ```env
-REDIS_URL=redis://127.0.0.1:6379/0
+# DB index 14 = audiobook-only keys when sharing Redis with other apps
+REDIS_URL=redis://127.0.0.1:6379/14
 STORAGE_ROOT=/tmp/audiobooks
 CORS_ORIGINS=https://your-app.vercel.app,http://localhost:3000
 ```
