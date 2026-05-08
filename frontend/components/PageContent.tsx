@@ -9,12 +9,16 @@ import { UploadZone } from "@/components/UploadZone";
 import { VoicePreview } from "@/components/VoicePreview";
 import {
   downloadMp3Blob,
+  downloadMp3Url,
   fetchStatus,
+  fetchVoices,
   getApiBase,
   startConvert,
   uploadPdf,
   type JobStatus,
+  type VoiceItem,
 } from "@/lib/api";
+import { audiobookDownloadName } from "@/lib/audiobookFilename";
 import {
   useCallback,
   useEffect,
@@ -45,6 +49,8 @@ export function PageContent() {
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(
     "en_US-lessac-medium",
   );
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const [voicesForLabels, setVoicesForLabels] = useState<VoiceItem[]>([]);
 
   const leftStackRef = useRef<HTMLDivElement>(null);
   const [voiceSectionHeightPx, setVoiceSectionHeightPx] = useState<number | null>(
@@ -73,6 +79,21 @@ export function PageContent() {
       mq.removeEventListener("change", sync);
     };
   }, [fileName, pageCount, pageError]);
+
+  useEffect(() => {
+    if (!apiOk) return;
+    fetchVoices()
+      .then(setVoicesForLabels)
+      .catch(() => {
+        /* VoicePreview shows voice load errors; download name falls back to voice_id */
+      });
+  }, [apiOk]);
+
+  const voiceLabelForDownload = useMemo(() => {
+    if (!selectedVoiceId) return "voice";
+    const v = voicesForLabels.find((x) => x.voice_id === selectedVoiceId);
+    return v?.label ?? selectedVoiceId;
+  }, [voicesForLabels, selectedVoiceId]);
 
   const onFile = useCallback(async (file: File) => {
     if (!apiOk) {
@@ -165,19 +186,22 @@ export function PageContent() {
   const onDownload = useCallback(async () => {
     if (!jobId || !apiOk) return;
     try {
-      const { blob, filename } = await downloadMp3Blob(jobId);
+      const { blob } = await downloadMp3Blob(jobId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = filename;
+      a.download = audiobookDownloadName(fileName, voiceLabelForDownload);
       a.click();
       URL.revokeObjectURL(url);
     } catch {
       setToast("Download failed — the file may have expired.");
     }
-  }, [apiOk, jobId]);
+  }, [apiOk, jobId, fileName, voiceLabelForDownload]);
 
   const downloadVisible = status === "complete";
+  const mp3ListenSrc =
+    downloadVisible && jobId && apiOk ? downloadMp3Url(jobId) : null;
+
   const generateDisabled =
     !apiOk ||
     !jobId ||
@@ -232,6 +256,8 @@ export function PageContent() {
               selectedVoiceId={selectedVoiceId}
               onSelectVoice={setSelectedVoiceId}
               fixedHeightPx={voiceSectionHeightPx}
+              playingVoiceId={playingVoiceId}
+              setPlayingVoiceId={setPlayingVoiceId}
             />
             <GenerateSection
               active={genBusy}
@@ -247,6 +273,9 @@ export function PageContent() {
               sizeBytes={mp3Size}
               onDownload={onDownload}
               busy={false}
+              mp3Src={mp3ListenSrc}
+              playingVoiceId={playingVoiceId}
+              setPlayingVoiceId={setPlayingVoiceId}
             />
             {status === "failed" && (
               <p className="text-pretty text-xs leading-relaxed text-red-800 sm:text-sm">

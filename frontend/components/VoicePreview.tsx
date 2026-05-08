@@ -9,24 +9,27 @@ import {
   type VoiceItem,
 } from "@/lib/api";
 import { Headphones } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
 type Props = {
   selectedVoiceId: string | null;
   onSelectVoice: (voiceId: string) => void;
   /** lg+ only: match height of upload + page column; voice list scrolls inside */
   fixedHeightPx?: number | null;
+  playingVoiceId: string | null;
+  setPlayingVoiceId: Dispatch<SetStateAction<string | null>>;
 };
 
 export function VoicePreview({
   selectedVoiceId,
   onSelectVoice,
   fixedHeightPx = null,
+  playingVoiceId,
+  setPlayingVoiceId,
 }: Props) {
   const base = getApiBase();
   const [voices, setVoices] = useState<VoiceItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!base) return;

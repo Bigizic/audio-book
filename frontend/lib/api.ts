@@ -89,10 +89,14 @@ export async function fetchStatus(jobId: string): Promise<StatusPayload> {
   return res.json();
 }
 
+export function downloadMp3Url(jobId: string): string {
+  return `${API_BASE}/download/${jobId}`;
+}
+
 export async function downloadMp3Blob(
   jobId: string,
 ): Promise<{ blob: Blob; filename: string }> {
-  const res = await fetch(`${API_BASE}/download/${jobId}`);
+  const res = await fetch(downloadMp3Url(jobId));
   if (!res.ok) throw new Error("Download failed");
   const cd = res.headers.get("Content-Disposition");
   let filename = "audiobook.mp3";

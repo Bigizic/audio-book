@@ -22,6 +22,10 @@ type Props = {
   voiceId: string;
   playingVoiceId: string | null;
   setPlayingVoiceId: Dispatch<SetStateAction<string | null>>;
+  /** e.g. "Audiobook preview" vs "Voice sample playback" */
+  groupAriaLabel?: string;
+  playLabel?: string;
+  pauseLabel?: string;
 };
 
 export function VoiceSamplePlayer({
@@ -29,6 +33,9 @@ export function VoiceSamplePlayer({
   voiceId,
   playingVoiceId,
   setPlayingVoiceId,
+  groupAriaLabel = "Voice sample playback",
+  playLabel = "Play sample",
+  pauseLabel = "Pause sample",
 }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -138,7 +145,7 @@ export function VoiceSamplePlayer({
       className="voice-player w-full min-w-0 overflow-hidden rounded-xl border border-line bg-paper px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] sm:px-4"
       onClick={(e) => e.stopPropagation()}
       role="group"
-      aria-label="Voice sample playback"
+      aria-label={groupAriaLabel}
     >
       <audio ref={audioRef} src={src} preload="metadata" hidden />
 
@@ -148,7 +155,7 @@ export function VoiceSamplePlayer({
             type="button"
             onClick={togglePlay}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-soft transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            aria-label={playing ? "Pause sample" : "Play sample"}
+            aria-label={playing ? pauseLabel : playLabel}
           >
             {playing ? (
               <Pause className="h-3.5 w-3.5" fill="currentColor" strokeWidth={0} />
