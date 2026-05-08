@@ -7,10 +7,10 @@ Requires=redis-server.service
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/opt/audiobook/backend
-Environment=PATH=/opt/audiobook/venv/bin
-EnvironmentFile=/opt/audiobook/backend/.env
-ExecStart=/opt/audiobook/venv/bin/gunicorn app.main:app \
+WorkingDirectory=/root/audio-book/backend
+Environment=PATH=/root/audio-book/.venv/bin
+EnvironmentFile=/root/audio-book/backend/.env
+ExecStart=/root/audio-book/venv/bin/gunicorn app.main:app \
   -k uvicorn.workers.UvicornWorker \
   -w 2 \
   -b 127.0.0.1:8000 \
