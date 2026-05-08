@@ -1,7 +1,9 @@
 [Unit]
 Description=Audiobook FastAPI (Gunicorn + Uvicorn workers)
-After=network.target redis-server.service
-Requires=redis-server.service
+# Redis is not redis-server.service on the host — use Docker (or any) Redis and REDIS_URL in .env.
+# Drop docker.service / Wants= below if Redis is on another host or Docker isn’t a systemd unit here.
+After=network-online.target docker.service
+Wants=docker.service
 
 [Service]
 Type=simple
