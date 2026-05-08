@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-paper text-ink antialiased;
+}
+
+::selection {
+  @apply bg-accent/20 text-ink;
+}
+
+.voices-scroll {
+  scrollbar-gutter: stable;
+}
+
+.voices-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.voices-scroll::-webkit-scrollbar-thumb {
+  background: rgb(44 42 38 / 0.2);
+  border-radius: 9999px;
+}
+
+.voices-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* VoiceSamplePlayer range inputs — separate seek vs volume so layout never stacks thumbs */
+.voice-player-seek,
+.voice-player-vol {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.voice-player-seek:focus,
+.voice-player-vol:focus {
+  outline: none;
+}
+
+.voice-player-seek:focus-visible,
+.voice-player-vol:focus-visible {
+  outline: 2px solid rgb(125 155 118 / 0.55);
+  outline-offset: 3px;
+  border-radius: 9999px;
+}
+
+.voice-player-seek::-webkit-slider-runnable-track,
+.voice-player-vol::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 9999px;
+  background: #dcd7cc;
+}
+
+.voice-player-seek::-webkit-slider-thumb,
+.voice-player-vol::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4px;
+  border-radius: 50%;
+  border: 2px solid #faf9f6;
+  box-shadow: 0 1px 2px rgb(44 42 38 / 0.12);
+}
+
+.voice-player-seek::-webkit-slider-thumb {
+  background: #b86b52;
+}
+
+.voice-player-vol::-webkit-slider-thumb {
+  background: #7d9b76;
+}
+
+.voice-player-seek::-moz-range-track,
+.voice-player-vol::-moz-range-track {
+  height: 5px;
+  border-radius: 9999px;
+  background: #dcd7cc;
+}
+
+.voice-player-seek::-moz-range-thumb,
+.voice-player-vol::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid #faf9f6;
+  box-shadow: 0 1px 2px rgb(44 42 38 / 0.12);
+}
+
+.voice-player-seek::-moz-range-thumb {
+  background: #b86b52;
+}
+
+.voice-player-vol::-moz-range-thumb {
+  background: #7d9b76;
+}
