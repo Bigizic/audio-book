@@ -10,7 +10,7 @@ Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=/root/audio-book/backend
-Environment=PATH=/root/audio-book/.venv/bin
+Environment=PATH=/root/audio-book/.venv/bin:/usr/bin
 EnvironmentFile=/root/audio-book/backend/.env
 ExecStart=/root/audio-book/.venv/bin/gunicorn app.main:app \
   -k uvicorn.workers.UvicornWorker \
