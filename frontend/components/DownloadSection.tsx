@@ -82,7 +82,7 @@ export function DownloadSection({
   }, [mp3Src]);
 
   if (!visible) return null;
-
+  
   return (
     <section className="rounded-2xl border border-accent/25 bg-paper p-4 shadow-soft sm:p-6">
       <div className="mb-3 flex items-center gap-2 text-ink sm:mb-4">
@@ -95,10 +95,10 @@ export function DownloadSection({
             {formatBytes(sizeBytes)}
           </span>
         )}
-        MP3 · 128 kbps
+        MP3
       </p>
 
-      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-stretch sm:gap-4">
+      <div className="flex min-w-0 flex-col gap-4 sm:items-stretch sm:gap-4">
         {previewError && (
           <p className="text-pretty text-xs text-muted sm:text-sm">
             In-browser preview failed (CORS or network). Download still works.
@@ -114,6 +114,7 @@ export function DownloadSection({
               groupAriaLabel="Audiobook playback"
               playLabel="Play audiobook"
               pauseLabel="Pause audiobook"
+              showPlaybackSpeed
             />
           </div>
         ) : mp3Src && !previewError ? (

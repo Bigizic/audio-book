@@ -4,17 +4,56 @@ import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { buildPlaybackSpeedOptions } from "@/lib/playbackSpeedOptions";
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function formatSpeedLabel(rate: number): string {
+  const t = rate.toFixed(2).replace(/\.?0+$/, "");
+  return `${t}×`;
+}
+
+/** Tick marks line up with native range thumb centers (thumb width must match CSS). */
+function PlaybackSpeedTicks({
+  options,
+  thumbPx,
+}: {
+  options: number[];
+  thumbPx: number;
+}) {
+  const n = options.length;
+  const tickLeft = (i: number) =>
+    n <= 1
+      ? "50%"
+      : `calc(${thumbPx / 2}px + (100% - ${thumbPx}px) * ${i / (n - 1)})`;
+
+  return (
+    <div
+      className="pointer-events-none relative mt-0.5 h-2.5 w-full select-none"
+      aria-hidden
+    >
+      {options.map((r: number, i: number) => (
+        <span
+          key={r}
+          className="absolute top-0 -translate-x-1/2 font-mono text-[8px] leading-none text-muted/70 sm:text-[9px]"
+          style={{ left: tickLeft(i) }}
+        >
+          |
+        </span>
+      ))}
+    </div>
+  );
 }
 
 type Props = {
@@ -26,6 +65,16 @@ type Props = {
   groupAriaLabel?: string;
   playLabel?: string;
   pauseLabel?: string;
+  /** When true, show a speed selector (uses HTMLAudioElement.playbackRate). */
+  showPlaybackSpeed?: boolean;
+  /** Lowest rate in the selector (e.g. 1.0). */
+  playbackSpeedMin?: number;
+  /** Highest rate in the selector (e.g. 1.2). */
+  playbackSpeedMax?: number;
+  /** Step between options (e.g. 0.05 → 1.0, 1.05, 1.10, …). */
+  playbackSpeedStep?: number;
+  /** Rate applied on load / when `src` changes. */
+  playbackSpeedDefault?: number;
 };
 
 export function VoiceSamplePlayer({
@@ -36,6 +85,11 @@ export function VoiceSamplePlayer({
   groupAriaLabel = "Voice sample playback",
   playLabel = "Play sample",
   pauseLabel = "Pause sample",
+  showPlaybackSpeed = false,
+  playbackSpeedMin = 0.5,
+  playbackSpeedMax = 2,
+  playbackSpeedStep = 0.05,
+  playbackSpeedDefault = 1,
 }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -43,6 +97,50 @@ export function VoiceSamplePlayer({
   const [current, setCurrent] = useState(0);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
+
+  const speedOptions = useMemo(
+    () =>
+      showPlaybackSpeed
+        ? buildPlaybackSpeedOptions(
+            playbackSpeedMin,
+            playbackSpeedMax,
+            playbackSpeedStep,
+          )
+        : [],
+    [
+      showPlaybackSpeed,
+      playbackSpeedMin,
+      playbackSpeedMax,
+      playbackSpeedStep,
+    ],
+  );
+
+  const [playbackRate, setPlaybackRate] = useState(playbackSpeedDefault);
+  const playbackRateRef = useRef(playbackRate);
+  playbackRateRef.current = playbackRate;
+
+  useEffect(() => {
+    setPlaybackRate(playbackSpeedDefault);
+  }, [src, playbackSpeedDefault]);
+
+  const applyPlaybackRateToElement = useCallback(() => {
+    const a = audioRef.current;
+    if (!a || !showPlaybackSpeed) return;
+    const r = Math.min(
+      playbackSpeedMax,
+      Math.max(playbackSpeedMin, playbackRateRef.current),
+    );
+    try {
+      a.defaultPlaybackRate = r;
+      a.playbackRate = r;
+    } catch {
+      /* ignore */
+    }
+  }, [showPlaybackSpeed, playbackSpeedMin, playbackSpeedMax]);
+
+  useEffect(() => {
+    applyPlaybackRateToElement();
+  }, [applyPlaybackRateToElement, playbackRate]);
 
   useEffect(() => {
     const a = audioRef.current;
@@ -63,8 +161,12 @@ export function VoiceSamplePlayer({
     if (!a) return;
 
     const onTime = () => setCurrent(a.currentTime);
-    const onMeta = () => setDuration(a.duration || 0);
+    const onMeta = () => {
+      setDuration(a.duration || 0);
+      applyPlaybackRateToElement();
+    };
     const onPlay = () => {
+      applyPlaybackRateToElement();
       setPlaying(true);
       setPlayingVoiceId(voiceId);
     };
@@ -81,6 +183,8 @@ export function VoiceSamplePlayer({
     a.addEventListener("timeupdate", onTime);
     a.addEventListener("loadedmetadata", onMeta);
     a.addEventListener("durationchange", onMeta);
+    a.addEventListener("canplay", applyPlaybackRateToElement);
+    a.addEventListener("playing", applyPlaybackRateToElement);
     a.addEventListener("play", onPlay);
     a.addEventListener("pause", onPause);
     a.addEventListener("ended", onEnded);
@@ -89,11 +193,13 @@ export function VoiceSamplePlayer({
       a.removeEventListener("timeupdate", onTime);
       a.removeEventListener("loadedmetadata", onMeta);
       a.removeEventListener("durationchange", onMeta);
+      a.removeEventListener("canplay", applyPlaybackRateToElement);
+      a.removeEventListener("playing", applyPlaybackRateToElement);
       a.removeEventListener("play", onPlay);
       a.removeEventListener("pause", onPause);
       a.removeEventListener("ended", onEnded);
     };
-  }, [src, voiceId, setPlayingVoiceId]);
+  }, [src, voiceId, setPlayingVoiceId, applyPlaybackRateToElement]);
 
   useEffect(() => {
     const a = audioRef.current;
@@ -103,7 +209,10 @@ export function VoiceSamplePlayer({
     setCurrent(0);
     setDuration(0);
     a.load();
-  }, [src]);
+    requestAnimationFrame(() => {
+      applyPlaybackRateToElement();
+    });
+  }, [src, applyPlaybackRateToElement]);
 
   const togglePlay = useCallback(() => {
     const a = audioRef.current;
@@ -112,12 +221,13 @@ export function VoiceSamplePlayer({
       a.pause();
       setPlayingVoiceId(null);
     } else {
+      applyPlaybackRateToElement();
       setPlayingVoiceId(voiceId);
       void a.play().catch(() => {
         setPlayingVoiceId(null);
       });
     }
-  }, [playing, voiceId, setPlayingVoiceId]);
+  }, [playing, voiceId, setPlayingVoiceId, applyPlaybackRateToElement]);
 
   const seek = useCallback(
     (value: number) => {
@@ -137,6 +247,20 @@ export function VoiceSamplePlayer({
     setVolume(v);
     if (v > 0) setMuted(false);
   }, []);
+
+  const speedSelectValue = useMemo(() => {
+    if (speedOptions.length === 0) return playbackRate;
+    let best = speedOptions[0]!;
+    let bestD = Math.abs(best - playbackRate);
+    for (const x of speedOptions) {
+      const d = Math.abs(x - playbackRate);
+      if (d < bestD) {
+        best = x;
+        bestD = d;
+      }
+    }
+    return best;
+  }, [speedOptions, playbackRate]);
 
   const maxDur = duration > 0 ? duration : 1;
 
@@ -211,6 +335,40 @@ export function VoiceSamplePlayer({
             aria-label="Volume"
           />
         </div>
+
+        {showPlaybackSpeed && speedOptions.length > 0 ? (
+          <div className="flex min-w-0 flex-col gap-2 border-t border-line/70 pt-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="shrink-0 text-[11px] font-medium text-muted sm:text-xs">
+                Playback Speed Control
+              </span>
+              <span className="font-sans text-xs tabular-nums text-ink sm:text-sm">
+                {formatSpeedLabel(speedSelectValue)}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <input
+                type="range"
+                min={playbackSpeedMin}
+                max={playbackSpeedMax}
+                step={playbackSpeedStep}
+                value={speedSelectValue}
+                onInput={(e) =>
+                  setPlaybackRate(Number((e.target as HTMLInputElement).value))
+                }
+                onChange={(e) =>
+                  setPlaybackRate(Number((e.target as HTMLInputElement).value))
+                }
+                className="voice-player-seek voice-speed-slider m-0 block h-3 w-full min-w-0 max-w-full cursor-pointer touch-manipulation"
+                aria-label="Playback speed"
+                aria-valuemin={playbackSpeedMin}
+                aria-valuemax={playbackSpeedMax}
+                aria-valuenow={speedSelectValue}
+              />
+              <PlaybackSpeedTicks options={speedOptions} thumbPx={13} />
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

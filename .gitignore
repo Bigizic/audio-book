@@ -1,3 +1,4 @@
 *.env
 backend/app/static/voices/*
-deploy/audiobook-backend.service
+*audiobook-backend.service*
+*tmp/
