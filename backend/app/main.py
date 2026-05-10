@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -7,11 +8,12 @@ from pathlib import Path
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from app.config import settings
 from app.models.schemas import (
     ConvertRequest,
+    FeaturesResponse,
     JobStatus,
     StatusResponse,
     UploadResponse,
@@ -133,6 +135,15 @@ async def convert(
         error=None,
         mp3_path=None,
         mp3_size_bytes=None,
+        progress_phase=None,
+        current_page=None,
+        pages_in_job=None,
+        pages_done=None,
+        words_done=None,
+        words_total=None,
+        tts_chunk_index=None,
+        tts_chunks_on_page=None,
+        char_count=0,
     )
     background_tasks.add_task(
         process_conversion,
@@ -144,11 +155,7 @@ async def convert(
     return {"ok": True, "job_id": body.job_id}
 
 
-@app.get("/status/{job_id}", response_model=StatusResponse)
-async def get_status(job_id: str) -> StatusResponse:
-    data = job_store.get(job_id)
-    if not data:
-        raise HTTPException(404, "Job not found.")
+def _status_from_job(data: dict) -> StatusResponse:
     status = JobStatus(data["status"])
     return StatusResponse(
         status=status,
@@ -156,6 +163,60 @@ async def get_status(job_id: str) -> StatusResponse:
         progress_percent=data.get("progress_percent"),
         eta_seconds=data.get("eta_seconds"),
         mp3_size_bytes=data.get("mp3_size_bytes"),
+        progress_phase=data.get("progress_phase"),
+        current_page=data.get("current_page"),
+        pages_in_job=data.get("pages_in_job"),
+        pages_done=data.get("pages_done"),
+        words_done=data.get("words_done"),
+        words_total=data.get("words_total"),
+        tts_chunk_index=data.get("tts_chunk_index"),
+        tts_chunks_on_page=data.get("tts_chunks_on_page"),
+    )
+
+
+@app.get("/features", response_model=FeaturesResponse)
+async def features() -> FeaturesResponse:
+    return FeaturesResponse(job_sse_enabled=settings.job_sse_enabled)
+
+
+@app.get("/status/{job_id}", response_model=StatusResponse)
+async def get_status(job_id: str) -> StatusResponse:
+    data = job_store.get(job_id)
+    if not data:
+        raise HTTPException(404, "Job not found.")
+    return _status_from_job(data)
+
+
+@app.get("/status/{job_id}/stream")
+async def status_stream(job_id: str) -> StreamingResponse:
+    if not settings.job_sse_enabled:
+        raise HTTPException(404, "Job status streaming is disabled.")
+
+    async def event_gen():
+        last: str | None = None
+        while True:
+            data = job_store.get(job_id)
+            if not data:
+                yield f"data: {json.dumps({'error': 'not_found'})}\n\n"
+                return
+            payload = _status_from_job(data).model_dump(mode="json")
+            blob = json.dumps(payload)
+            if blob != last:
+                last = blob
+                yield f"data: {blob}\n\n"
+            st = data.get("status")
+            if st in (JobStatus.complete.value, JobStatus.failed.value):
+                return
+            await asyncio.sleep(0.2)
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

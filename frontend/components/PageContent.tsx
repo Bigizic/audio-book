@@ -10,12 +10,15 @@ import { VoicePreview } from "@/components/VoicePreview";
 import {
   downloadMp3Blob,
   downloadMp3Url,
+  fetchFeatures,
   fetchStatus,
   fetchVoices,
   getApiBase,
   startConvert,
+  statusStreamUrl,
   uploadPdf,
   type JobStatus,
+  type StatusPayload,
   type VoiceItem,
 } from "@/lib/api";
 import { audiobookDownloadName } from "@/lib/audiobookFilename";
@@ -45,9 +48,17 @@ export function PageContent() {
   const [progressPercent, setProgressPercent] = useState<number | null>(null);
   const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
   const [mp3Size, setMp3Size] = useState<number | null>(null);
+  const [progressPhase, setProgressPhase] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number | null>(null);
+  const [pagesInJob, setPagesInJob] = useState<number | null>(null);
+  const [pagesDone, setPagesDone] = useState<number | null>(null);
+  const [wordsDone, setWordsDone] = useState<number | null>(null);
+  const [wordsTotal, setWordsTotal] = useState<number | null>(null);
+  const [ttsChunkIndex, setTtsChunkIndex] = useState<number | null>(null);
+  const [ttsChunksOnPage, setTtsChunksOnPage] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(
-    "en_US-lessac-medium",
+    "en_US-ryan-high",
   );
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [voicesForLabels, setVoicesForLabels] = useState<VoiceItem[]>([]);
@@ -115,6 +126,14 @@ export function PageContent() {
       setProgressPercent(null);
       setEtaSeconds(null);
       setMp3Size(null);
+      setProgressPhase(null);
+      setCurrentPage(null);
+      setPagesInJob(null);
+      setPagesDone(null);
+      setWordsDone(null);
+      setWordsTotal(null);
+      setTtsChunkIndex(null);
+      setTtsChunksOnPage(null);
     } catch (e) {
       setToast(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -147,6 +166,25 @@ export function PageContent() {
     }
   }, [apiOk, jobId, selectedVoiceId, startPage, endPage, validatePages]);
 
+  const applyStatus = useCallback((s: StatusPayload) => {
+    setStatus(s.status);
+    setMessage(s.message);
+    setProgressPercent(s.progress_percent ?? null);
+    setEtaSeconds(s.eta_seconds ?? null);
+    if (s.mp3_size_bytes != null) setMp3Size(s.mp3_size_bytes);
+    setProgressPhase(s.progress_phase ?? null);
+    setCurrentPage(s.current_page ?? null);
+    setPagesInJob(s.pages_in_job ?? null);
+    setPagesDone(s.pages_done ?? null);
+    setWordsDone(s.words_done ?? null);
+    setWordsTotal(s.words_total ?? null);
+    setTtsChunkIndex(s.tts_chunk_index ?? null);
+    setTtsChunksOnPage(s.tts_chunks_on_page ?? null);
+    if (s.status === "complete" || s.status === "failed") {
+      setGenBusy(false);
+    }
+  }, []);
+
   const polling =
     genBusy &&
     status &&
@@ -158,30 +196,44 @@ export function PageContent() {
     if (!jobId || !polling) return;
 
     let cancelled = false;
-    const tick = async () => {
+    let es: EventSource | null = null;
+
+    const poll = async () => {
       try {
         const s = await fetchStatus(jobId);
         if (cancelled) return;
-        setStatus(s.status);
-        setMessage(s.message);
-        setProgressPercent(s.progress_percent ?? null);
-        setEtaSeconds(s.eta_seconds ?? null);
-        if (s.mp3_size_bytes != null) setMp3Size(s.mp3_size_bytes);
-        if (s.status === "complete" || s.status === "failed") {
-          setGenBusy(false);
-        }
+        applyStatus(s);
       } catch {
         if (!cancelled) setToast("Lost connection to the studio. Try again.");
       }
     };
 
-    tick();
-    const id = setInterval(tick, 1500);
+    void (async () => {
+      const features = await fetchFeatures();
+      if (cancelled || !features.job_sse_enabled) return;
+      try {
+        es = new EventSource(statusStreamUrl(jobId));
+        es.onmessage = (ev) => {
+          try {
+            const s = JSON.parse(ev.data) as StatusPayload;
+            applyStatus(s);
+          } catch {
+            /* ignore malformed */
+          }
+        };
+      } catch {
+        /* EventSource unsupported — polling only */
+      }
+    })();
+
+    void poll();
+    const id = setInterval(poll, 2000);
     return () => {
       cancelled = true;
       clearInterval(id);
+      es?.close();
     };
-  }, [jobId, polling]);
+  }, [jobId, polling, applyStatus]);
 
   const onDownload = useCallback(async () => {
     if (!jobId || !apiOk) return;
@@ -265,6 +317,15 @@ export function PageContent() {
               message={message}
               progressPercent={progressPercent}
               etaSeconds={etaSeconds}
+              documentPageCount={pageCount}
+              progressPhase={progressPhase}
+              currentPage={currentPage}
+              pagesInJob={pagesInJob}
+              pagesDone={pagesDone}
+              wordsDone={wordsDone}
+              wordsTotal={wordsTotal}
+              ttsChunkIndex={ttsChunkIndex}
+              ttsChunksOnPage={ttsChunksOnPage}
               onGenerate={onGenerate}
               disabled={generateDisabled}
             />

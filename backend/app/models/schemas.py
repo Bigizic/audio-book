@@ -39,3 +39,15 @@ class StatusResponse(BaseModel):
     progress_percent: Optional[float] = None
     eta_seconds: Optional[int] = None
     mp3_size_bytes: Optional[int] = None
+    progress_phase: Optional[str] = None
+    current_page: Optional[int] = None
+    pages_in_job: Optional[int] = None
+    pages_done: Optional[int] = None
+    words_done: Optional[int] = None
+    words_total: Optional[int] = None
+    tts_chunk_index: Optional[int] = None
+    tts_chunks_on_page: Optional[int] = None
+
+
+class FeaturesResponse(BaseModel):
+    job_sse_enabled: bool

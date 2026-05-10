@@ -52,5 +52,5 @@ echo
 echo "Done. Next on the server:"
 echo "  python3 -m venv .venv && source .venv/bin/activate"
 echo "  pip install -r requirements.txt"
-echo "First uvicorn start downloads 10 voices (EN-US, EN-GB, Kiswahili) into app/static/.../voices/ — slow, needs disk + network."
+echo "First uvicorn start downloads 4 voices (2 EN-US, 2 EN-GB) into app/static/voices/ — slow, needs disk + network."
 echo "Docs: https://github.com/OHF-Voice/piper1-gpl"

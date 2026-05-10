@@ -9,6 +9,15 @@ type Props = {
   message: string;
   progressPercent: number | null;
   etaSeconds: number | null;
+  documentPageCount: number | null;
+  progressPhase: string | null;
+  currentPage: number | null;
+  pagesInJob: number | null;
+  pagesDone: number | null;
+  wordsDone: number | null;
+  wordsTotal: number | null;
+  ttsChunkIndex: number | null;
+  ttsChunksOnPage: number | null;
   onGenerate: () => void;
   disabled: boolean;
 };
@@ -19,12 +28,26 @@ function formatEta(s: number) {
   return `~${m} min`;
 }
 
+function formatCount(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return n.toLocaleString();
+}
+
 export function GenerateSection({
   active,
   status,
   message,
   progressPercent,
   etaSeconds,
+  documentPageCount,
+  progressPhase,
+  currentPage,
+  pagesInJob,
+  pagesDone,
+  wordsDone,
+  wordsTotal,
+  ttsChunkIndex,
+  ttsChunksOnPage,
   onGenerate,
   disabled,
 }: Props) {
@@ -32,6 +55,32 @@ export function GenerateSection({
     active &&
     status &&
     (status === "extracting" || status === "processing" || status === "pending");
+
+  const pageLabel =
+    currentPage != null && documentPageCount != null
+      ? `Page ${currentPage.toLocaleString()} / ${documentPageCount.toLocaleString()}`
+      : currentPage != null && pagesInJob != null
+        ? `Page ${currentPage.toLocaleString()} (${pagesInJob.toLocaleString()} in this run)`
+        : null;
+
+  const selectionProgress =
+    pagesInJob != null && pagesDone != null
+      ? `${pagesDone.toLocaleString()} / ${pagesInJob.toLocaleString()} pages done in this audiobook`
+      : null;
+
+  const wordsLabel =
+    wordsTotal != null && wordsTotal > 0
+      ? `${formatCount(wordsDone)} / ${formatCount(wordsTotal)} words`
+      : wordsDone != null && wordsDone > 0
+        ? `${formatCount(wordsDone)} words read`
+        : null;
+
+  const partLabel =
+    ttsChunkIndex != null &&
+    ttsChunksOnPage != null &&
+    ttsChunksOnPage > 1
+      ? `Part ${ttsChunkIndex} / ${ttsChunksOnPage} on this page`
+      : null;
 
   return (
     <section className="rounded-2xl border border-line bg-white/70 p-4 shadow-card backdrop-blur-sm sm:p-6">
@@ -74,11 +123,22 @@ export function GenerateSection({
               }}
             />
           </div>
-          <p className="text-[11px] text-muted sm:text-xs">
-            {status === "extracting" && "Extracting text from your PDF…"}
-            {status === "processing" && "Generating audio with Piper…"}
-            {status === "pending" && "Queued — starting shortly…"}
-          </p>
+          <div className="space-y-1 text-[11px] text-muted sm:text-xs">
+            {progressPhase && (
+              <p className="font-medium capitalize text-ink/80">
+                {progressPhase === "reading" && "Reading PDF"}
+                {progressPhase === "synthesizing" && "Text-to-speech"}
+                {progressPhase === "encoding" && "Encoding"}
+                {!["reading", "synthesizing", "encoding"].includes(progressPhase) &&
+                  progressPhase}
+              </p>
+            )}
+            {pageLabel && <p>{pageLabel}</p>}
+            {selectionProgress && <p>{selectionProgress}</p>}
+            {wordsLabel && <p>{wordsLabel}</p>}
+            {partLabel && <p>{partLabel}</p>}
+            {status === "pending" && <p>Queued — starting shortly…</p>}
+          </div>
         </div>
       )}
     </section>

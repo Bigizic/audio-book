@@ -105,7 +105,7 @@ export function VoicePreview({
             <IllustrationHeadphones />
           </div>
           <p className="max-w-2xl text-center text-xs leading-relaxed text-muted text-pretty sm:text-left sm:text-sm">
-            English (US), English (GB), and Kiswahili — each row has a themed preview player
+            English (US) and English (GB) — two voices each, with a preview player per voice
             (play, seek, volume). Only one sample plays at a time.
           </p>
         </div>

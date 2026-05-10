@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     job_ttl_seconds: int = 30 * 60
     cleanup_interval_minutes: int = 15
-    max_chunk_chars: int = 100_000
+    """Max words per Piper call; a whole page under this limit is one chunk."""
+    tts_max_words_per_chunk: int = 1500
+    """When True, GET /status/{job_id}/stream emits Server-Sent Events."""
+    job_sse_enabled: bool = True
     ffmpeg_binary: str = "ffmpeg"
 
 

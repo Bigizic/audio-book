@@ -20,6 +20,14 @@ export type StatusPayload = {
   progress_percent?: number | null;
   eta_seconds?: number | null;
   mp3_size_bytes?: number | null;
+  progress_phase?: string | null;
+  current_page?: number | null;
+  pages_in_job?: number | null;
+  pages_done?: number | null;
+  words_done?: number | null;
+  words_total?: number | null;
+  tts_chunk_index?: number | null;
+  tts_chunks_on_page?: number | null;
 };
 
 export type VoiceItem = {
@@ -29,6 +37,12 @@ export type VoiceItem = {
   label: string;
   sample_url: string;
 };
+
+export async function fetchFeatures(): Promise<{ job_sse_enabled: boolean }> {
+  const res = await fetch(`${API_BASE}/features`, { cache: "no-store" });
+  if (!res.ok) return { job_sse_enabled: false };
+  return res.json();
+}
 
 export async function fetchVoices(): Promise<VoiceItem[]> {
   const res = await fetch(`${API_BASE}/voices`, { cache: "no-store" });
@@ -87,6 +101,10 @@ export async function fetchStatus(jobId: string): Promise<StatusPayload> {
   });
   if (!res.ok) throw new Error("Status unavailable");
   return res.json();
+}
+
+export function statusStreamUrl(jobId: string): string {
+  return `${API_BASE}/status/${jobId}/stream`;
 }
 
 export function downloadMp3Url(jobId: string): string {

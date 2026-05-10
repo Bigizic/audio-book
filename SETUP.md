@@ -16,11 +16,10 @@ Or run `./install-piper-vps.sh` on Linux for ffmpeg + Python (see script header)
 
 ## Piper (`piper-tts`) + voices
 
-TTS uses **`piper-tts`** from [piper1-gpl](https://github.com/OHF-Voice/piper1-gpl). On first API start, **10 voices** are downloaded from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices) into `backend/app/static/en_US-lessac-medium/voices/<voice_id>/` (each folder has `.onnx`, `.onnx.json`, and `sample.mp3`):
+TTS uses **`piper-tts`** from [piper1-gpl](https://github.com/OHF-Voice/piper1-gpl). On first API start, **4 voices** are downloaded from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices) into `backend/app/static/voices/<voice_id>/` (each folder has `.onnx`, `.onnx.json`, and `sample.mp3`):
 
-- **English (US)** — 5 (includes `en_US-lessac-medium` plus four others)
-- **English (GB)** — 4
-- **Kiswahili** — 1 (`sw_CD-lanfrica-medium`)
+- **English (US)** — 2 (`en_US-ryan-high`, `en_US-ljspeech-high`)
+- **English (GB)** — 2 (`en_GB-cori-high`, `en_GB-southern_english_female-low`)
 
 First startup can take several minutes (large ONNX files). Ensure enough disk space (~1 GB+).
 

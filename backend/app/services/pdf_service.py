@@ -1,50 +1,78 @@
+import re
 from pathlib import Path
 
-import pdfplumber
-
-from app.config import settings
+import fitz  # PyMuPDF
 
 
 def count_pages(pdf_path: Path) -> int:
-    with pdfplumber.open(pdf_path) as pdf:
-        return len(pdf.pages)
+    with fitz.open(pdf_path) as doc:
+        return len(doc)
 
 
-def extract_text_range(pdf_path: Path, start_page: int, end_page: int) -> tuple[str, int]:
+def split_page_for_tts(text: str, max_words: int) -> list[str]:
     """
-    start_page, end_page are 1-based inclusive, clamped to document.
-    Returns (text, pages_used).
+    One PDF page → one or more Piper-sized chunks.
+    Oversized pages split on paragraphs, then sentences, then hard word boundaries.
     """
-    with pdfplumber.open(pdf_path) as pdf:
-        n = len(pdf.pages)
-        start = max(1, start_page)
-        end = min(end_page, n)
-        if start > end:
-            return "", 0
-        parts: list[str] = []
-        for idx in range(start - 1, end):
-            page = pdf.pages[idx]
-            t = page.extract_text() or ""
-            if t.strip():
-                parts.append(t.strip())
-        return "\n\n".join(parts), end - start + 1
+    if max_words < 1:
+        max_words = 1
+    text = (text or "").strip()
+    if not text:
+        return []
+    words = text.split()
+    if len(words) <= max_words:
+        return [text]
 
-
-def chunk_text(text: str, max_chars: int) -> list[str]:
-    if len(text) <= max_chars:
-        return [text] if text else []
     chunks: list[str] = []
-    start = 0
-    while start < len(text):
-        end = min(start + max_chars, len(text))
-        if end < len(text):
-            split_at = text.rfind("\n\n", start, end)
-            if split_at == -1 or split_at <= start:
-                split_at = text.rfind(" ", start, end)
-            if split_at > start:
-                end = split_at
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-        start = end
-    return chunks
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    if not paragraphs:
+        paragraphs = [text]
+
+    buf: list[str] = []
+
+    def flush_buf() -> None:
+        if buf:
+            chunks.append(" ".join(buf))
+            buf.clear()
+
+    for para in paragraphs:
+        pw = para.split()
+        if len(pw) > max_words:
+            flush_buf()
+            chunks.extend(_split_oversized_paragraph(para, max_words))
+            continue
+        if len(buf) + len(pw) <= max_words:
+            buf.extend(pw)
+        else:
+            flush_buf()
+            if len(pw) <= max_words:
+                buf.extend(pw)
+            else:
+                chunks.extend(_split_oversized_paragraph(para, max_words))
+    flush_buf()
+    return [c for c in chunks if c.strip()]
+
+
+def _split_oversized_paragraph(para: str, max_words: int) -> list[str]:
+    sentences = re.split(r"(?<=[.!?])\s+|\n+", para)
+    out: list[str] = []
+    buf: list[str] = []
+    for s in sentences:
+        s = s.strip()
+        if not s:
+            continue
+        sw = s.split()
+        if len(buf) + len(sw) <= max_words:
+            buf.extend(sw)
+        else:
+            if buf:
+                out.append(" ".join(buf))
+                buf = []
+            if len(sw) <= max_words:
+                buf.extend(sw)
+            else:
+                for i in range(0, len(sw), max_words):
+                    out.append(" ".join(sw[i : i + max_words]))
+    if buf:
+        out.append(" ".join(buf))
+    return out
