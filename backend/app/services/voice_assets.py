@@ -12,7 +12,7 @@ from piper import PiperVoice
 
 from app.config import settings
 from app.services.ffmpeg_audio import wav_to_mp3
-from app.voice_catalog import HF_BASE, VOICES, VOICE_BY_ID
+from app.voice_catalog import HF_BASE, get_voices, voice_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def sample_mp3_path(voice_id: str) -> Path:
 
 
 def ensure_voice_files(voice_id: str) -> None:
-    entry = VOICE_BY_ID[voice_id]
+    entry = voice_by_id()[voice_id]
     d = voice_dir(voice_id)
     d.mkdir(parents=True, exist_ok=True)
     onnx_path, json_path = model_paths(voice_id)
@@ -86,7 +86,7 @@ def ensure_voice_sample_mp3(voice_id: str) -> Path:
         raise FileNotFoundError(onnx_path)
     voice = PiperVoice.load(str(onnx_path), config_path=str(json_path))
     wav_path = voice_dir(voice_id) / "_sample_build.wav"
-    entry = VOICE_BY_ID[voice_id]
+    entry = voice_by_id()[voice_id]
     try:
         with wave.open(str(wav_path), "wb") as wf:
             voice.synthesize_wav(entry.preview_text, wf)
@@ -98,7 +98,7 @@ def ensure_voice_sample_mp3(voice_id: str) -> Path:
 
 def ensure_all_voices() -> None:
     settings.voices_base_dir.mkdir(parents=True, exist_ok=True)
-    for entry in VOICES:
+    for entry in get_voices():
         vid = entry.voice_id
         try:
             ensure_voice_files(vid)
@@ -110,7 +110,7 @@ def ensure_all_voices() -> None:
 
 
 def is_voice_ready(voice_id: str) -> bool:
-    if voice_id not in VOICE_BY_ID:
+    if voice_id not in voice_by_id():
         return False
     onnx_path, json_path = model_paths(voice_id)
     sp = sample_mp3_path(voice_id)

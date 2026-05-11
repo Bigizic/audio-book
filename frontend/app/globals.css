@@ -100,3 +100,52 @@ body {
 .voice-player-vol::-moz-range-thumb {
   background: #7d9b76;
 }
+
+/* Generate section — horizontal progress tracks (document / pages / words) */
+@keyframes audiobook-page-shuttle {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@keyframes audiobook-page-fill-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.92;
+    filter: brightness(1.06);
+  }
+}
+
+.audiobook-page-progress-track {
+  @apply relative h-2 w-full min-w-0 overflow-hidden rounded-full bg-line/90;
+}
+
+.audiobook-page-progress-indeterminate-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 42%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(184 107 82 / 0.25),
+    rgb(125 155 118 / 0.45),
+    rgb(184 107 82 / 0.2),
+    transparent
+  );
+  animation: audiobook-page-shuttle 1.2s ease-in-out infinite;
+}
+
+.audiobook-page-progress-fill {
+  @apply h-full rounded-full bg-gradient-to-r from-accent to-sage;
+  animation: audiobook-page-fill-pulse 1.75s ease-in-out infinite;
+}

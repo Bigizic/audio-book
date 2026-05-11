@@ -59,6 +59,22 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now audiobook-backend
 ```
 
+## GitHub deploy webhook (optional)
+
+Push to `main` can call **`POST /hooks/github/deploy`** on your public API (HTTPS). The handler verifies **`X-Hub-Signature-256`** (same secret as in GitHub → Webhooks), then runs **`deploy/vps-pull-and-update.sh`** in a **background task** (so GitHub gets a quick `200` and does not hit the ~10s delivery timeout while `pip install` runs).
+
+1. On the VPS, copy `deploy/github-webhook-secret.example.json` to `deploy/github-webhook-secret.json`, set `"secret"` to a long random string, and point `.env` at it with `GITHUB_WEBHOOK_SECRET_FILE=...` (or set `GITHUB_WEBHOOK_SECRET` directly).
+2. GitHub repo → **Settings → Webhooks** → Payload URL `https://your.domain/hooks/github/deploy`, Content type **application/json**, Secret = same string, events: **Just the push event**.
+3. Allow the app user (e.g. `www-data`) to run the pull script as root:
+
+   ```text
+   www-data ALL=(root) NOPASSWD: /opt/audiobook/deploy/vps-pull-and-update.sh
+   ```
+
+   The repo at `DEPLOY_ROOT` must be **writable by root** for `git fetch` / `git reset` in that script (or adjust ownership to match your setup).
+
+4. **Notifications:** GitHub’s webhook **Recent Deliveries** shows HTTP status for each push (green/red). For email-like alerts without hosting mail, set **`DEPLOY_NOTIFY_URL`** to a channel that accepts JSON POST (e.g. **[ntfy.sh](https://ntfy.sh)** topic URL); the app sends `{"deploy_ok": bool, "message": "..."}` after the script finishes.
+
 ## Nginx + firewall
 
 - Copy `deploy/nginx.conf.snippet` into your site config; set `server_name` and TLS as needed (Certbot).

@@ -3,10 +3,16 @@ from pathlib import Path
 
 import fitz  # PyMuPDF
 
+from app.services.memory_debug import log_process_rss
+
 
 def count_pages(pdf_path: Path) -> int:
+    log_process_rss("pdf.count_pages", "before open")
     with fitz.open(pdf_path) as doc:
-        return len(doc)
+        n = len(doc)
+        log_process_rss("pdf.count_pages", f"opened n={n}")
+    log_process_rss("pdf.count_pages", "after close")
+    return n
 
 
 def split_page_for_tts(text: str, max_words: int) -> list[str]:
@@ -14,13 +20,16 @@ def split_page_for_tts(text: str, max_words: int) -> list[str]:
     One PDF page → one or more Piper-sized chunks.
     Oversized pages split on paragraphs, then sentences, then hard word boundaries.
     """
+    log_process_rss("pdf.split_page_for_tts", f"in chars={len(text or '')}")
     if max_words < 1:
         max_words = 1
     text = (text or "").strip()
     if not text:
+        log_process_rss("pdf.split_page_for_tts", "out empty")
         return []
     words = text.split()
     if len(words) <= max_words:
+        log_process_rss("pdf.split_page_for_tts", "out single chunk")
         return [text]
 
     chunks: list[str] = []
@@ -50,7 +59,9 @@ def split_page_for_tts(text: str, max_words: int) -> list[str]:
             else:
                 chunks.extend(_split_oversized_paragraph(para, max_words))
     flush_buf()
-    return [c for c in chunks if c.strip()]
+    out = [c for c in chunks if c.strip()]
+    log_process_rss("pdf.split_page_for_tts", f"out chunks={len(out)}")
+    return out
 
 
 def _split_oversized_paragraph(para: str, max_words: int) -> list[str]:

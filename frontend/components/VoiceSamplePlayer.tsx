@@ -11,6 +11,12 @@ import {
   type SetStateAction,
 } from "react";
 import { buildPlaybackSpeedOptions } from "@/lib/playbackSpeedOptions";
+import {
+  clearPreviewPlayback,
+  ensurePreviewPlaybackMatches,
+  readPreviewPlayback,
+  writePreviewPlayback,
+} from "@/lib/previewPlaybackStorage";
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -75,6 +81,10 @@ type Props = {
   playbackSpeedStep?: number;
   /** Rate applied on load / when `src` changes. */
   playbackSpeedDefault?: number;
+  /** When set, persist `currentTime` / duration for this preview (UUID from parent). */
+  playbackPersistenceId?: string | null;
+  /** Report `<audio>` for audiobook sync (e.g. 3D reading room). */
+  onAudioElement?: (element: HTMLAudioElement | null) => void;
 };
 
 export function VoiceSamplePlayer({
@@ -90,8 +100,13 @@ export function VoiceSamplePlayer({
   playbackSpeedMax = 2,
   playbackSpeedStep = 0.05,
   playbackSpeedDefault = 1,
+  playbackPersistenceId = null,
+  onAudioElement,
 }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const persistenceIdRef = useRef<string | null>(null);
+  persistenceIdRef.current = playbackPersistenceId ?? null;
+  const lastSaveAtRef = useRef(0);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
@@ -122,6 +137,37 @@ export function VoiceSamplePlayer({
   useEffect(() => {
     setPlaybackRate(playbackSpeedDefault);
   }, [src, playbackSpeedDefault]);
+
+  useEffect(() => {
+    if (!playbackPersistenceId) return;
+    ensurePreviewPlaybackMatches(playbackPersistenceId);
+  }, [playbackPersistenceId]);
+
+  const savePlaybackPosition = useCallback(() => {
+    const a = audioRef.current;
+    const pid = persistenceIdRef.current;
+    if (!a || !pid) return;
+    const d = a.duration;
+    if (!Number.isFinite(d) || d <= 0) return;
+    const r = showPlaybackSpeed
+      ? Math.min(
+          playbackSpeedMax,
+          Math.max(playbackSpeedMin, playbackRateRef.current),
+        )
+      : playbackSpeedDefault;
+    writePreviewPlayback({
+      v: 1,
+      previewId: pid,
+      currentTime: a.currentTime,
+      duration: d,
+      playbackRate: r,
+    });
+  }, [
+    showPlaybackSpeed,
+    playbackSpeedMin,
+    playbackSpeedMax,
+    playbackSpeedDefault,
+  ]);
 
   const applyPlaybackRateToElement = useCallback(() => {
     const a = audioRef.current;
@@ -159,25 +205,82 @@ export function VoiceSamplePlayer({
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
+    lastSaveAtRef.current = 0;
 
-    const onTime = () => setCurrent(a.currentTime);
+    const restoreIfStored = () => {
+      const pid = persistenceIdRef.current;
+      if (!pid) return;
+      const d = a.duration;
+      if (!Number.isFinite(d) || d <= 0) return;
+      const s = readPreviewPlayback();
+      if (!s || s.previewId !== pid) return;
+      const t = Math.min(Math.max(0, s.currentTime), Math.max(0, d - 0.05));
+      a.currentTime = t;
+      setCurrent(t);
+      if (showPlaybackSpeed) {
+        const r = Math.min(
+          playbackSpeedMax,
+          Math.max(playbackSpeedMin, s.playbackRate),
+        );
+        setPlaybackRate(r);
+        playbackRateRef.current = r;
+        try {
+          a.defaultPlaybackRate = r;
+          a.playbackRate = r;
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+
+    const onTime = () => {
+      const t = a.currentTime;
+      setCurrent(t);
+      const pid = persistenceIdRef.current;
+      if (!pid || a.paused) return;
+      const d = a.duration;
+      if (!Number.isFinite(d) || d <= 0) return;
+      const now = Date.now();
+      if (now - lastSaveAtRef.current < 240) return;
+      lastSaveAtRef.current = now;
+      const r = showPlaybackSpeed
+        ? Math.min(
+            playbackSpeedMax,
+            Math.max(playbackSpeedMin, playbackRateRef.current),
+          )
+        : playbackSpeedDefault;
+      writePreviewPlayback({
+        v: 1,
+        previewId: pid,
+        currentTime: t,
+        duration: d,
+        playbackRate: r,
+      });
+    };
     const onMeta = () => {
       setDuration(a.duration || 0);
       applyPlaybackRateToElement();
+      restoreIfStored();
     };
     const onPlay = () => {
       applyPlaybackRateToElement();
       setPlaying(true);
       setPlayingVoiceId(voiceId);
+      lastSaveAtRef.current = 0;
+      savePlaybackPosition();
     };
     const onPause = () => {
       setPlaying(false);
       setPlayingVoiceId((prev) => (prev === voiceId ? null : prev));
+      savePlaybackPosition();
     };
     const onEnded = () => {
       setPlaying(false);
       setCurrent(0);
       setPlayingVoiceId((prev) => (prev === voiceId ? null : prev));
+      if (persistenceIdRef.current) {
+        clearPreviewPlayback();
+      }
     };
 
     a.addEventListener("timeupdate", onTime);
@@ -199,7 +302,17 @@ export function VoiceSamplePlayer({
       a.removeEventListener("pause", onPause);
       a.removeEventListener("ended", onEnded);
     };
-  }, [src, voiceId, setPlayingVoiceId, applyPlaybackRateToElement]);
+  }, [
+    src,
+    voiceId,
+    setPlayingVoiceId,
+    applyPlaybackRateToElement,
+    savePlaybackPosition,
+    showPlaybackSpeed,
+    playbackSpeedMin,
+    playbackSpeedMax,
+    playbackSpeedDefault,
+  ]);
 
   useEffect(() => {
     const a = audioRef.current;
@@ -235,8 +348,9 @@ export function VoiceSamplePlayer({
       if (!a || !duration) return;
       a.currentTime = value;
       setCurrent(value);
+      savePlaybackPosition();
     },
-    [duration],
+    [duration, savePlaybackPosition],
   );
 
   const toggleMute = useCallback(() => {
@@ -263,6 +377,14 @@ export function VoiceSamplePlayer({
   }, [speedOptions, playbackRate]);
 
   const maxDur = duration > 0 ? duration : 1;
+
+  useEffect(() => {
+    const el = audioRef.current;
+    onAudioElement?.(el ?? null);
+    return () => {
+      onAudioElement?.(null);
+    };
+  }, [src, onAudioElement]);
 
   return (
     <div
@@ -353,12 +475,18 @@ export function VoiceSamplePlayer({
                 max={playbackSpeedMax}
                 step={playbackSpeedStep}
                 value={speedSelectValue}
-                onInput={(e) =>
-                  setPlaybackRate(Number((e.target as HTMLInputElement).value))
-                }
-                onChange={(e) =>
-                  setPlaybackRate(Number((e.target as HTMLInputElement).value))
-                }
+                onInput={(e) => {
+                  const v = Number((e.target as HTMLInputElement).value);
+                  setPlaybackRate(v);
+                  playbackRateRef.current = v;
+                  savePlaybackPosition();
+                }}
+                onChange={(e) => {
+                  const v = Number((e.target as HTMLInputElement).value);
+                  setPlaybackRate(v);
+                  playbackRateRef.current = v;
+                  savePlaybackPosition();
+                }}
                 className="voice-player-seek voice-speed-slider m-0 block h-3 w-full min-w-0 max-w-full cursor-pointer touch-manipulation"
                 aria-label="Playback speed"
                 aria-valuemin={playbackSpeedMin}

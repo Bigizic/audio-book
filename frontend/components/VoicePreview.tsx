@@ -14,8 +14,6 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 type Props = {
   selectedVoiceId: string | null;
   onSelectVoice: (voiceId: string) => void;
-  /** lg+ only: match height of upload + page column; voice list scrolls inside */
-  fixedHeightPx?: number | null;
   playingVoiceId: string | null;
   setPlayingVoiceId: Dispatch<SetStateAction<string | null>>;
 };
@@ -23,12 +21,11 @@ type Props = {
 export function VoicePreview({
   selectedVoiceId,
   onSelectVoice,
-  fixedHeightPx = null,
   playingVoiceId,
   setPlayingVoiceId,
 }: Props) {
   const base = getApiBase();
-  const [voices, setVoices] = useState<VoiceItem[]>([]);
+  let [voices, setVoices] = useState<VoiceItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,10 +45,16 @@ export function VoicePreview({
     return m;
   }, [voices]);
 
-  const languageKeys = useMemo(
-    () => Array.from(byLanguage.keys()),
-    [byLanguage],
-  );
+  const languageKeys = useMemo(() => {
+    const keys = Array.from(byLanguage.keys());
+    const rank = (label: string) => {
+      const code = byLanguage.get(label)?.[0]?.language_code ?? "";
+      if (code === "en_GB") return 0;
+      if (code === "en_US") return 1;
+      return 50;
+    };
+    return keys.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  }, [byLanguage]);
 
   if (!base) {
     return (
@@ -69,47 +72,26 @@ export function VoicePreview({
   }
 
   return (
-    <section
-      className={`flex min-h-0 flex-col rounded-2xl border border-line bg-white/70 p-4 shadow-card backdrop-blur-sm sm:p-6 lg:p-8 ${
-        fixedHeightPx ? "min-h-0 overflow-hidden" : ""
-      }`}
-      style={
-        fixedHeightPx != null && fixedHeightPx > 0
-          ? { height: fixedHeightPx }
-          : undefined
-      }
-    >
-      <header
-        className={`shrink-0 border-b border-line/80 pb-3 sm:pb-4 ${
-          fixedHeightPx ? "mb-3" : "mb-5 pb-4 sm:mb-6"
-        } flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4`}
-      >
+    <section className="flex flex-col rounded-2xl border border-line bg-white/70 p-4 shadow-card backdrop-blur-sm sm:p-6 lg:p-8">
+      <header className="mb-5 flex shrink-0 flex-col gap-2 border-b border-line/80 pb-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4 sm:pb-4">
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
           <Headphones className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
           <h2 className="font-serif text-base text-ink sm:text-lg md:text-xl">Voice &amp; language</h2>
         </div>
-        <p
-          className={`min-w-0 text-pretty text-muted sm:max-w-sm ${
-            fixedHeightPx
-              ? "text-[11px] leading-snug sm:text-xs"
-              : "text-xs leading-relaxed sm:text-right sm:text-sm"
-          }`}
-        >
+        <p className="min-w-0 text-pretty text-xs leading-relaxed text-muted sm:max-w-sm sm:text-right sm:text-sm">
           Pick a narrator, preview, then generate.
         </p>
       </header>
 
-      {!fixedHeightPx && (
-        <div className="mb-6 flex flex-col items-center gap-4 sm:mb-8 sm:flex-row sm:items-start sm:gap-6">
-          <div className="shrink-0 text-accent/90 sm:pt-1">
-            <IllustrationHeadphones />
-          </div>
-          <p className="max-w-2xl text-center text-xs leading-relaxed text-muted text-pretty sm:text-left sm:text-sm">
-            English (US) and English (GB) — two voices each, with a preview player per voice
-            (play, seek, volume). Only one sample plays at a time.
-          </p>
+      {/*<div className="mb-6 flex flex-col items-center gap-4 sm:mb-8 sm:flex-row sm:items-start sm:gap-6">
+        <div className="shrink-0 text-accent/90 sm:pt-1">
+          <IllustrationHeadphones />
         </div>
-      )}
+        <p className="max-w-2xl text-center text-xs leading-relaxed text-muted text-pretty sm:text-left sm:text-sm">
+          English (US) and English (GB) — two voices each, with a preview player per voice (play,
+          seek, volume). Only one sample plays at a time.
+        </p>
+      </div>*/}
 
       {loadError && (
         <p className="mb-3 shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-pretty text-xs text-red-900 sm:text-sm">
@@ -117,11 +99,7 @@ export function VoicePreview({
         </p>
       )}
 
-      <div
-        className={`voices-scroll min-h-0 space-y-6 overflow-x-hidden sm:space-y-8 ${
-          fixedHeightPx ? "mt-0 flex-1 overflow-y-auto overscroll-contain pr-1" : ""
-        }`}
-      >
+      <div className="voices-scroll space-y-6 overflow-x-hidden sm:space-y-8">
         {languageKeys.map((lang) => (
           <div key={lang} className="min-w-0">
             <h3 className="mb-3 font-serif text-sm text-ink sm:mb-4 sm:text-base md:text-lg">

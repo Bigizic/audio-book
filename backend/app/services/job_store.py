@@ -50,6 +50,8 @@ class JobStore:
             "words_total": None,
             "tts_chunk_index": None,
             "tts_chunks_on_page": None,
+            "partial_wav_bytes": None,
+            "cancel_requested": False,
         }
         self._r.set(_key(job_id), json.dumps(data), ex=settings.job_ttl_seconds + 3600)
         return job_id
