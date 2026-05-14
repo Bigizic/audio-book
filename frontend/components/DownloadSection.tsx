@@ -2,75 +2,128 @@
 
 import { VoiceSamplePlayer } from "@/components/VoiceSamplePlayer";
 import { formatBytes } from "@/lib/format";
-import { Clock, Download } from "lucide-react";
+import { previewAudioUrl } from "@/lib/api";
+import { Clock, Download, RefreshCw } from "lucide-react";
 import {
   type Dispatch,
   type SetStateAction,
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
+import { getOrCreatePreviewSessionId } from "@/lib/previewPlaybackStorage";
 
 export const AUDIOBOOK_RESULT_PLAYER_ID = "__audiobook_result__";
+export const AUDIOBOOK_LIVE_PLAYER_ID = "__audiobook_live__";
+
+type PreviewKind = "none" | "mp3" | "wav";
 
 type Props = {
-  visible: boolean;
+  complete: boolean;
+  generating: boolean;
+  livePreviewSupported: boolean;
+  jobId: string | null;
+  /** From job status (SSE / poll) — when this grows, “Load latest” enables. */
+  partialWavBytes: number | null;
   sizeBytes: number | null;
   onDownload: () => void;
   busy: boolean;
-  mp3Src: string | null;
+  finalMp3Src: string | null;
   playingVoiceId: string | null;
   setPlayingVoiceId: Dispatch<SetStateAction<string | null>>;
+  onAudiobookAudioElement?: (element: HTMLAudioElement | null) => void;
 };
 
 export function DownloadSection({
-  visible,
+  complete,
+  generating,
+  livePreviewSupported,
+  jobId,
+  partialWavBytes,
   sizeBytes,
   onDownload,
   busy,
-  mp3Src,
+  finalMp3Src,
   playingVoiceId,
   setPlayingVoiceId,
+  onAudiobookAudioElement,
 }: Props) {
   const [playUrl, setPlayUrl] = useState<string | null>(null);
+  const [previewKind, setPreviewKind] = useState<PreviewKind>("none");
   const [previewError, setPreviewError] = useState(false);
   const playUrlRef = useRef<string | null>(null);
+  const [liveLoadedBytes, setLiveLoadedBytes] = useState<number | null>(null);
+  const [liveReloadNonce, setLiveReloadNonce] = useState(0);
+  const partialRef = useRef(partialWavBytes);
+  partialRef.current = partialWavBytes;
+  const liveInitialFetchedRef = useRef(false);
+  const initialWavLoadStartedRef = useRef(false);
+
+  const liveActive =
+    Boolean(
+      generating &&
+        livePreviewSupported &&
+        jobId &&
+        partialWavBytes != null &&
+        partialWavBytes > 0,
+    );
+
+  const visible = complete || liveActive;
+
+  const previewFingerprint = useMemo(() => {
+    if (!visible || !jobId) return null;
+    /** One session for live WAV + final MP3 so timeline & speed survive encode completion. */
+    return `job:${jobId}:audiobook-preview`;
+  }, [visible, jobId]);
+
+  const [previewPlaybackId, setPreviewPlaybackId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!mp3Src) {
+    if (!previewFingerprint) {
+      setPreviewPlaybackId(null);
+      return;
+    }
+    setPreviewPlaybackId(getOrCreatePreviewSessionId(previewFingerprint));
+  }, [previewFingerprint]);
+
+  const staleLive =
+    liveLoadedBytes !== null &&
+    partialWavBytes != null &&
+    partialWavBytes > liveLoadedBytes;
+
+  const fetchToBlobUrl = useCallback(
+    async (url: string, kind: PreviewKind) => {
+      setPreviewError(false);
+      setPlayUrl(null);
       if (playUrlRef.current) {
         URL.revokeObjectURL(playUrlRef.current);
         playUrlRef.current = null;
       }
-      setPlayUrl(null);
-      setPreviewError(false);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("preview fetch failed");
+      const blob = await res.blob();
+      const u = URL.createObjectURL(blob);
+      playUrlRef.current = u;
+      setPlayUrl(u);
+      setPreviewKind(kind);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!complete || !finalMp3Src) {
       return;
     }
     let cancelled = false;
-    setPreviewError(false);
-    setPlayUrl(null);
-    if (playUrlRef.current) {
-      URL.revokeObjectURL(playUrlRef.current);
-      playUrlRef.current = null;
-    }
-    fetch(mp3Src)
-      .then((r) => {
-        if (!r.ok) throw new Error("preview fetch failed");
-        return r.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        const u = URL.createObjectURL(blob);
-        if (cancelled) {
-          URL.revokeObjectURL(u);
-          return;
-        }
-        playUrlRef.current = u;
-        setPlayUrl(u);
-      })
-      .catch(() => {
+    void (async () => {
+      try {
+        await fetchToBlobUrl(finalMp3Src, "mp3");
+      } catch {
         if (!cancelled) setPreviewError(true);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
       if (playUrlRef.current) {
@@ -78,61 +131,180 @@ export function DownloadSection({
         playUrlRef.current = null;
       }
       setPlayUrl(null);
+      setPreviewKind("none");
     };
-  }, [mp3Src]);
+  }, [complete, finalMp3Src, fetchToBlobUrl]);
+
+  useEffect(() => {
+    if (complete || !liveActive || !jobId) {
+      return;
+    }
+    if (partialWavBytes == null || partialWavBytes <= 0) {
+      return;
+    }
+    if (liveInitialFetchedRef.current || initialWavLoadStartedRef.current) {
+      return;
+    }
+
+    initialWavLoadStartedRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const bytes = partialRef.current ?? partialWavBytes;
+        if (bytes == null || bytes <= 0) return;
+        const url = previewAudioUrl(jobId, bytes);
+        await fetchToBlobUrl(url, "wav");
+        if (!cancelled) {
+          setLiveLoadedBytes(bytes);
+          liveInitialFetchedRef.current = true;
+        }
+      } catch {
+        if (!cancelled) setPreviewError(true);
+      } finally {
+        initialWavLoadStartedRef.current = false;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [complete, liveActive, jobId, partialWavBytes, fetchToBlobUrl]);
+
+  useEffect(() => {
+    if (liveReloadNonce === 0) return;
+    if (complete || !liveActive || !jobId) return;
+    const bytes = partialRef.current;
+    if (bytes == null || bytes <= 0) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const url = previewAudioUrl(jobId, bytes);
+        await fetchToBlobUrl(url, "wav");
+        if (!cancelled) setLiveLoadedBytes(bytes);
+      } catch {
+        if (!cancelled) setPreviewError(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [liveReloadNonce, complete, liveActive, jobId, fetchToBlobUrl]);
+
+  useEffect(() => {
+    if (!jobId) {
+      setLiveLoadedBytes(null);
+      setLiveReloadNonce(0);
+      liveInitialFetchedRef.current = false;
+      initialWavLoadStartedRef.current = false;
+    }
+  }, [jobId]);
+
+  useEffect(() => {
+    if (!generating) {
+      setLiveLoadedBytes(null);
+      liveInitialFetchedRef.current = false;
+      initialWavLoadStartedRef.current = false;
+    }
+  }, [generating]);
+
+  const reloadLive = useCallback(() => {
+    const j = jobId;
+    const bytes = partialRef.current;
+    if (!j || bytes == null || bytes <= 0) return;
+    setLiveReloadNonce((n) => n + 1);
+  }, [jobId]);
 
   if (!visible) return null;
-  
+
+  const showLiveRefreshSlot =
+    liveActive && previewKind === "wav" && playUrl && liveLoadedBytes !== null;
+
   return (
     <section className="rounded-2xl border border-accent/25 bg-paper p-4 shadow-soft sm:p-6">
       <div className="mb-3 flex items-center gap-2 text-ink sm:mb-4">
         <Download className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
-        <h2 className="font-serif text-lg sm:text-xl">Your audiobook</h2>
+        <h2 className="font-serif text-lg sm:text-xl">
+          {complete ? "Your audiobook" : "Your audiobook (in progress)"}
+        </h2>
       </div>
       <p className="mb-4 text-pretty text-xs text-muted sm:text-sm">
-        {sizeBytes != null && (
-          <span className="mr-2 font-medium text-ink">
-            {formatBytes(sizeBytes)}
-          </span>
+        {complete && sizeBytes != null && (
+          <span className="mr-2 font-medium text-ink">{formatBytes(sizeBytes)}</span>
         )}
-        MP3
+        {complete
+          ? "MP3"
+          : "WAV preview — status updates enable “Load latest” when more audio is saved."}
       </p>
 
       <div className="flex min-w-0 flex-col gap-4 sm:items-stretch sm:gap-4">
         {previewError && (
           <p className="text-pretty text-xs text-muted sm:text-sm">
-            In-browser preview failed (CORS or network). Download still works.
+            In-browser preview failed (CORS or network). Download still works when ready.
           </p>
         )}
         {playUrl ? (
-          <div className="min-w-0 flex-1">
-            <VoiceSamplePlayer
-              src={playUrl}
-              voiceId={AUDIOBOOK_RESULT_PLAYER_ID}
-              playingVoiceId={playingVoiceId}
-              setPlayingVoiceId={setPlayingVoiceId}
-              groupAriaLabel="Audiobook playback"
-              playLabel="Play audiobook"
-              pauseLabel="Pause audiobook"
-              showPlaybackSpeed
-            />
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+            <div className="min-w-0 flex-1">
+              <VoiceSamplePlayer
+                src={playUrl}
+                voiceId={
+                  previewKind === "wav"
+                    ? AUDIOBOOK_LIVE_PLAYER_ID
+                    : AUDIOBOOK_RESULT_PLAYER_ID
+                }
+                playingVoiceId={playingVoiceId}
+                setPlayingVoiceId={setPlayingVoiceId}
+                groupAriaLabel={
+                  previewKind === "wav" ? "Live audiobook preview" : "Audiobook playback"
+                }
+                playLabel={previewKind === "wav" ? "Play preview" : "Play audiobook"}
+                pauseLabel={previewKind === "wav" ? "Pause preview" : "Pause audiobook"}
+                showPlaybackSpeed
+                playbackPersistenceId={previewPlaybackId}
+                onAudioElement={onAudiobookAudioElement}
+              />
+            </div>
+            {showLiveRefreshSlot ? (
+              <button
+                type="button"
+                onClick={reloadLive}
+                disabled={!staleLive}
+                title={
+                  staleLive
+                    ? "Fetch the longer preview from the server"
+                    : "Wait for a status update with more audio"
+                }
+                className="inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-full border border-line bg-white px-4 py-2.5 text-xs font-medium text-ink shadow-card transition hover:border-accent/40 enabled:hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 sm:self-start sm:py-3 sm:text-sm"
+                aria-label={
+                  staleLive
+                    ? "Load latest preview audio"
+                    : "Load latest preview audio (no update yet)"
+                }
+              >
+                <RefreshCw className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                Load latest
+              </button>
+            ) : null}
           </div>
-        ) : mp3Src && !previewError ? (
+        ) : (complete && finalMp3Src && !previewError) ||
+          (liveActive && !previewError) ? (
           <p className="flex flex-1 items-center text-pretty text-xs text-muted sm:text-sm">
             Loading preview…
           </p>
         ) : null}
-        <div className="flex shrink-0 items-start sm:items-center">
-          <button
-            type="button"
-            onClick={onDownload}
-            disabled={busy}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-xs font-medium text-ink shadow-card transition hover:border-accent/40 disabled:opacity-50 sm:w-auto sm:px-6 sm:py-3 sm:text-sm"
-          >
-            <Download className="h-4 w-4" />
-            Download MP3
-          </button>
-        </div>
+        {complete ? (
+          <div className="flex shrink-0 items-start sm:items-center">
+            <button
+              type="button"
+              onClick={onDownload}
+              disabled={busy}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-xs font-medium text-ink shadow-card transition hover:border-accent/40 disabled:opacity-50 sm:w-auto sm:px-6 sm:py-3 sm:text-sm"
+            >
+              <Download className="h-4 w-4" />
+              Download MP3
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-3 flex items-start gap-2 rounded-lg bg-white/80 px-3 py-2 text-pretty text-xs text-muted sm:mt-4 sm:text-sm">

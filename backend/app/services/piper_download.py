@@ -14,14 +14,14 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# en_US-lessac-medium (see https://huggingface.co/rhasspy/piper-voices )
+# en_US-ryan-high (see https://huggingface.co/rhasspy/piper-voices )
 _ONNX_URL = (
     "https://huggingface.co/rhasspy/piper-voices/resolve/main/"
-    "en/en_US/lessac/medium/en_US-lessac-medium.onnx"
+    "en/en_US/ryan/high/en_US-ryan-high.onnx"
 )
 _JSON_URL = (
     "https://huggingface.co/rhasspy/piper-voices/resolve/main/"
-    "en/en_US/lessac/medium/en_US-lessac-medium.onnx.json"
+    "en/en_US/ryan/high/en_US-ryan-high.onnx.json"
 )
 
 _MIN_ONNX_BYTES = 500_000
@@ -82,7 +82,7 @@ def ensure_piper_voice_files() -> None:
         return
 
     if need_onnx:
-        logger.info("Downloading Piper voice ONNX (en_US-lessac-medium)...")
+        logger.info("Downloading Piper voice ONNX (en_US-ryan-high)...")
         try:
             _download_file(_ONNX_URL, model)
         except PermissionError as e:

@@ -42,6 +42,16 @@ class JobStore:
             "eta_seconds": None,
             "char_count": 0,
             "mp3_size_bytes": None,
+            "progress_phase": None,
+            "current_page": None,
+            "pages_in_job": None,
+            "pages_done": None,
+            "words_done": None,
+            "words_total": None,
+            "tts_chunk_index": None,
+            "tts_chunks_on_page": None,
+            "partial_wav_bytes": None,
+            "cancel_requested": False,
         }
         self._r.set(_key(job_id), json.dumps(data), ex=settings.job_ttl_seconds + 3600)
         return job_id
@@ -56,7 +66,8 @@ class JobStore:
         data = self.get(job_id)
         if not data:
             return
-        data.update({k: v for k, v in fields.items() if v is not None})
+        # Apply all passed fields, including explicit None (e.g. clear mp3_path on re-convert).
+        data.update(fields)
         self._r.set(_key(job_id), json.dumps(data), ex=settings.job_ttl_seconds + 3600)
 
     def touch_ttl(self, job_id: str) -> None:

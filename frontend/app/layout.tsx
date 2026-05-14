@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AppProviders } from "@/components/AppProviders";
 import { Crimson_Text, Inter } from "next/font/google";
 import "./globals.css";
 
@@ -28,7 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${crimson.variable}`}>
-      <body className="min-h-screen font-sans">{children}</body>
+      <body className="min-h-screen font-sans">
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }

@@ -23,6 +23,7 @@ if [[ ! -d .venv ]]; then
 fi
 # shellcheck source=/dev/null
 source "$ROOT/backend/.venv/bin/activate"
+echo "Tip: set MEMORY_USAGE_DEBUG=true in backend/.env to log RSS during PDF/TTS (psutil)." >&2
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 &
 BACKEND_PID=$!
 echo "Backend http://127.0.0.1:8000 (pid $BACKEND_PID)"
