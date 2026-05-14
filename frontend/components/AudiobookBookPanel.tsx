@@ -1,10 +1,27 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchAudiobookAlignment } from "@/lib/api";
 import type { AudiobookAlignmentManifest } from "@/lib/audiobookAlignment";
+
+function LoadingBookSpinner() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#ebe4d9]/85 text-xs text-muted"
+    >
+      <Loader2
+        className="h-8 w-8 animate-spin text-accent"
+        strokeWidth={1.75}
+        aria-hidden
+      />
+      <span className="font-medium tracking-wide">Loading book…</span>
+    </div>
+  );
+}
 
 const AudiobookBook3D = dynamic(
   () =>
@@ -14,8 +31,8 @@ const AudiobookBook3D = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[420px] max-h-[55vh] min-h-[280px] items-center justify-center overflow-hidden rounded-xl bg-[#ebe4d9]/80 text-xs text-muted">
-        Loading book…
+      <div className="h-[420px] max-h-[55vh] min-h-[280px] overflow-hidden rounded-xl">
+        <LoadingBookSpinner />
       </div>
     ),
   },
@@ -37,13 +54,13 @@ function ColorControl({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex shrink-0 items-center gap-1.5 text-[10px] text-muted sm:text-xs">
-      <span className="hidden sm:inline">{label}</span>
+    <label className="flex shrink-0 flex-col items-start gap-1 text-[10px] text-muted sm:text-xs">
+      <span className="truncate">{label}</span>
       <input
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-7 w-9 cursor-pointer rounded border border-line bg-white p-0.5"
+        className="h-7 w-12 cursor-pointer rounded border border-line bg-white p-0.5"
         title={label}
         aria-label={label}
       />
@@ -166,11 +183,13 @@ export function AudiobookBookPanel({
 
   return (
     <section className="flex min-h-0 flex-col rounded-2xl border border-line bg-white/70 shadow-card backdrop-blur-sm">
-      <div className="flex items-center justify-between gap-2 border-b border-line/70 px-4 py-3 sm:px-5">
-        <div className="flex min-w-0 flex-wrap items-center gap-2 text-ink">
-          <BookOpen className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
-          <h2 className="font-serif text-base sm:text-lg">Reading room</h2>
-          <label className="ml-1 flex min-w-[9rem] items-center gap-2 text-[10px] text-muted sm:text-xs">
+      <div className="flex flex-col gap-3 border-b border-line/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-ink">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
+            <h2 className="font-serif text-base sm:text-lg">Reading room</h2>
+          </div>
+          <label className="flex w-full min-w-0 items-center gap-2 text-[10px] text-muted sm:w-auto sm:min-w-[9rem] sm:text-xs">
             <span>Zoom</span>
             <input
               type="range"
@@ -187,7 +206,7 @@ export function AudiobookBookPanel({
             </span>
           </label>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-2 justify-center sm:shrink-0 sm:justify-end">
           <ColorControl label="Highlight" value={highlightHex} onChange={setHighlightHex} />
           <ColorControl label="Text" value={textColor} onChange={setTextColor} />
           <ColorControl label="Pages" value={pageColor} onChange={setPageColor} />
@@ -217,8 +236,8 @@ export function AudiobookBookPanel({
           </div>
         )}
         {isComplete && !alignment && !alignError && (
-          <div className="absolute inset-0 z-[5] flex items-center justify-center bg-[#ebe4d9]/90 text-xs text-muted">
-            Loading book…
+          <div className="absolute inset-0 z-[5]">
+            <LoadingBookSpinner />
           </div>
         )}
         {isComplete && alignment && (

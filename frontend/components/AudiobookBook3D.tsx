@@ -135,7 +135,7 @@ function PageContent({
           sdfGlyphSize={64}
           outlineWidth={0}
           strokeWidth={0}
-          fillOpacity={1}
+          fillOpacity={4}
         >
           {title.toUpperCase()}
         </Text>
@@ -203,7 +203,7 @@ function InkedBox({
   color,
   position,
   rotation,
-  edgeOpacity = 0.75,
+  edgeOpacity = 0.18,
 }: {
   args: [number, number, number];
   color: string;
@@ -214,8 +214,8 @@ function InkedBox({
   return (
     <mesh position={position} rotation={rotation} castShadow receiveShadow>
       <boxGeometry args={args} />
-      <meshStandardMaterial color={color} roughness={0.9} metalness={0} />
-      <Edges color={`rgba(26, 26, 26, ${edgeOpacity})`} />
+      <meshStandardMaterial color={color} roughness={0.85} metalness={0} />
+      <Edges color={`rgba(70, 70, 70, ${Math.min(edgeOpacity, 0.3)})`} />
     </mesh>
   );
 }
@@ -241,6 +241,7 @@ function BookScene({
 }: BookSceneProps) {
   const rootRef = useRef<THREE.Group>(null);
   const rightPivotRef = useRef<THREE.Group>(null);
+  const leftPivotRef = useRef<THREE.Group>(null);
 
   const wordsPerSpread = WORDS_PER_BOOK_PAGE * (isMobile ? 1 : 2);
 
@@ -267,6 +268,7 @@ function BookScene({
   const [displayedSpread, setDisplayedSpread] = useState<SpreadRef | null>(null);
 
   const flipRef = useRef(0);
+  const flipDirRef = useRef<1 | -1>(1);
   const flipTargetRef = useRef<SpreadRef | null>(null);
   const swappedMidRef = useRef(false);
 
@@ -284,7 +286,7 @@ function BookScene({
     const words = alignment.pages[String(displayedSpread.pdfPage)]?.words ?? [];
     const start = displayedSpread.spread * wordsPerSpread;
     const leftStart = start;
-    const rightStart = isMobile ? start : start + WORDS_PER_BOOK_PAGE;
+    const rightStart = start + WORDS_PER_BOOK_PAGE;
     const left = words.slice(leftStart, rightStart);
     const right = isMobile
       ? []
@@ -335,26 +337,23 @@ function BookScene({
 
     if (nextOrder === displayedOrder) return;
 
-    if (nextOrder < displayedOrder) {
+    const resetPivots = () => {
+      if (rightPivotRef.current) rightPivotRef.current.rotation.y = 0;
+      if (leftPivotRef.current) leftPivotRef.current.rotation.y = 0;
+    };
+
+    if (nextOrder < displayedOrder - 1 || nextOrder > displayedOrder + 1) {
       setDisplayedSpread(next);
       flipRef.current = 0;
       swappedMidRef.current = false;
       flipTargetRef.current = null;
-      if (rightPivotRef.current) rightPivotRef.current.rotation.y = 0;
+      resetPivots();
       return;
     }
 
-    if (nextOrder > displayedOrder + 1) {
-      setDisplayedSpread(next);
-      flipRef.current = 0;
-      swappedMidRef.current = false;
-      flipTargetRef.current = null;
-      if (rightPivotRef.current) rightPivotRef.current.rotation.y = 0;
-      return;
-    }
-
-    if (nextOrder > displayedOrder && flipRef.current === 0) {
+    if (flipRef.current === 0) {
       flipRef.current = 0.001;
+      flipDirRef.current = nextOrder > displayedOrder ? 1 : -1;
       flipTargetRef.current = next;
       swappedMidRef.current = false;
     }
@@ -369,13 +368,19 @@ function BookScene({
       );
     }
 
-    const pivot = rightPivotRef.current;
-    if (!pivot) return;
-
     if (flipRef.current > 0 && flipRef.current < 1) {
       flipRef.current = Math.min(1, flipRef.current + dt * 1.05);
       const t = easeInOutCubic(flipRef.current);
-      pivot.rotation.y = -t * Math.PI * 0.92;
+      const angle = t * Math.PI * 0.92;
+      const dir = flipDirRef.current;
+
+      if (dir === 1) {
+        if (rightPivotRef.current) rightPivotRef.current.rotation.y = -angle;
+        if (leftPivotRef.current) leftPivotRef.current.rotation.y = 0;
+      } else {
+        if (leftPivotRef.current) leftPivotRef.current.rotation.y = angle;
+        if (rightPivotRef.current) rightPivotRef.current.rotation.y = 0;
+      }
 
       if (flipRef.current >= 0.48 && !swappedMidRef.current && flipTargetRef.current != null) {
         swappedMidRef.current = true;
@@ -384,7 +389,8 @@ function BookScene({
 
       if (flipRef.current >= 1) {
         flipRef.current = 0;
-        pivot.rotation.y = 0;
+        if (rightPivotRef.current) rightPivotRef.current.rotation.y = 0;
+        if (leftPivotRef.current) leftPivotRef.current.rotation.y = 0;
         swappedMidRef.current = false;
         flipTargetRef.current = null;
       }
@@ -412,7 +418,7 @@ function BookScene({
           <InkedBox
             key={`mobile-layer-${i}`}
             args={[PW + 0.14 - i * 0.018, PH + 0.12 - i * 0.018, 0.018]}
-            color={i % 2 === 0 ? pageColor : "#f2e3cc"}
+            color={pageColor}
             position={[0.02 + i * 0.014, -0.02 + i * 0.012, -0.075 + i * 0.024]}
             rotation={[0, -0.025 - i * 0.005, -0.025 + i * 0.01]}
             edgeOpacity={0.64}
@@ -489,14 +495,14 @@ function BookScene({
         <group key={`layer-${i}`} position={[0, 0, -0.075 + i * 0.024]}>
           <InkedBox
             args={[PW + 0.16 - i * 0.018, PH + 0.12 - i * 0.018, 0.018]}
-            color={i % 2 === 0 ? pageColor : "#f2e3cc"}
+            color={pageColor}
             position={[-PW / 2 - 0.03 - i * 0.018, -0.02 + i * 0.012, 0]}
             rotation={[0, 0.025 + i * 0.005, 0.035 - i * 0.012]}
             edgeOpacity={0.64}
           />
           <InkedBox
             args={[PW + 0.16 - i * 0.018, PH + 0.12 - i * 0.018, 0.018]}
-            color={i % 2 === 0 ? pageColor : "#f2e3cc"}
+            color={pageColor}
             position={[PW / 2 + 0.03 + i * 0.018, -0.02 + i * 0.012, 0]}
             rotation={[0, -0.025 - i * 0.005, -0.035 + i * 0.012]}
             edgeOpacity={0.64}
@@ -519,21 +525,23 @@ function BookScene({
         edgeOpacity={0.75}
       />
 
-      <group position={[-PW / 2 + 0.02, 0.04, 0.05]} rotation={[0, 0.08, 0.01]}>
-        <InkedBox
-          args={[PW, PH, PD]}
-          color={pageColor}
-          position={[0, 0, 0]}
-          edgeOpacity={0.9}
-        />
-        <PageContent
-          title={displayedSpread ? `Page ${displayedSpread.pdfPage}` : "—"}
-          folio={leftFolio}
-          words={leftWords}
-          highlightIdx={leftHi}
-          highlightHex={highlightHex}
-          textColor={textColor}
-        />
+      <group ref={leftPivotRef} position={[0, 0.04, 0.05]}>
+        <group position={[-PW / 2 + 0.02, 0, 0]} rotation={[0, 0.08, 0.01]}>
+          <InkedBox
+            args={[PW, PH, PD]}
+            color={pageColor}
+            position={[0, 0, 0]}
+            edgeOpacity={0.9}
+          />
+          <PageContent
+            title={displayedSpread ? `Page ${displayedSpread.pdfPage}` : "—"}
+            folio={leftFolio}
+            words={leftWords}
+            highlightIdx={leftHi}
+            highlightHex={highlightHex}
+            textColor={textColor}
+          />
+        </group>
       </group>
 
       <InkedBox
@@ -604,7 +612,7 @@ export function AudiobookBook3D({
 
   const onCreated = useCallback(({ gl }: { gl: THREE.WebGLRenderer }) => {
     gl.shadowMap.enabled = true;
-    gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    gl.shadowMap.type = THREE.PCFShadowMap;
 
     const canvas = gl.domElement;
     let restoreTimer: number | null = null;
@@ -654,13 +662,14 @@ export function AudiobookBook3D({
         onCreated={onCreated}
       >
         <color attach="background" args={[roomBgColor]} />
-        <fog attach="fog" args={[roomBgColor, 8, 22]} />
+        <fog attach="fog" args={[roomBgColor, 40, 80]} />
 
-        <ambientLight intensity={0.6} />
+        <ambientLight intensity={1.15} />
         <directionalLight
           castShadow
           position={[3.8, 7.5, 4.5]}
-          intensity={0.9}
+          intensity={1.05}
+          color="#ffffff"
           shadow-mapSize-width={1024}
           shadow-mapSize-height={1024}
           shadow-camera-far={20}
@@ -670,7 +679,7 @@ export function AudiobookBook3D({
           shadow-camera-bottom={-4}
           shadow-bias={-0.00025}
         />
-        <directionalLight position={[-3, 4, -2]} intensity={0.28} color="#cdbca9" />
+        <directionalLight position={[-3, 4, -2]} intensity={0.35} color="#ffffff" />
 
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.98, 0]} receiveShadow>
           <planeGeometry args={[24, 24]} />
