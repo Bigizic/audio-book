@@ -141,6 +141,19 @@ export function downloadMp3Url(jobId: string): string {
   return `${API_BASE}/download/${jobId}`;
 }
 
+/** Streams via the browser download manager (no full-file fetch into JS memory). */
+export function triggerNativeMp3Download(jobId: string, suggestedFilename: string): void {
+  const a = document.createElement("a");
+  a.href = downloadMp3Url(jobId);
+  a.download = suggestedFilename;
+  a.rel = "noopener noreferrer";
+  a.target = "_blank";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 export function audiobookAlignmentUrl(jobId: string): string {
   return `${API_BASE}/audiobook-alignment/${jobId}`;
 }
@@ -158,21 +171,4 @@ export async function fetchAudiobookAlignment(
 /** Cache-busting query matches server ``partial_wav_bytes`` so the browser refetches when the WAV grows. */
 export function previewAudioUrl(jobId: string, byteLength: number): string {
   return `${API_BASE}/preview-audio/${jobId}?v=${byteLength}`;
-}
-
-export async function downloadMp3Blob(
-  jobId: string,
-): Promise<{ blob: Blob; filename: string }> {
-  const res = await fetch(downloadMp3Url(jobId));
-  if (!res.ok) {
-    throw new Error(await errorMessageFromResponse(res));
-  }
-  const cd = res.headers.get("Content-Disposition");
-  let filename = "audiobook.mp3";
-  if (cd?.includes("filename=")) {
-    const m = cd.match(/filename="?([^";]+)"?/);
-    if (m) filename = m[1];
-  }
-  const blob = await res.blob();
-  return { blob, filename };
 }

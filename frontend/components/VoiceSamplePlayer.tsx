@@ -388,7 +388,7 @@ export function VoiceSamplePlayer({
 
   return (
     <div
-      className="voice-player w-full min-w-0 overflow-hidden rounded-xl border border-line bg-paper px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] sm:px-4"
+      className="voice-player w-full min-w-0 overflow-hidden rounded-xl border border-line bg-paper px-3 py-3 shadow-inner sm:px-4"
       onClick={(e) => e.stopPropagation()}
       role="group"
       aria-label={groupAriaLabel}

@@ -1,8 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { BookOpen, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { BookOpen, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchAudiobookAlignment } from "@/lib/api";
 import type { AudiobookAlignmentManifest } from "@/lib/audiobookAlignment";
 
@@ -11,7 +11,7 @@ function LoadingBookSpinner() {
     <div
       role="status"
       aria-live="polite"
-      className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#ebe4d9]/85 text-xs text-muted"
+      className="flex h-full w-full flex-col items-center justify-center gap-3 bg-paper/85 text-xs text-muted"
     >
       <Loader2
         className="h-8 w-8 animate-spin text-accent"
@@ -60,7 +60,7 @@ function ColorControl({
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-7 w-12 cursor-pointer rounded border border-line bg-white p-0.5"
+        className="h-7 w-12 cursor-pointer rounded border border-line bg-surface p-0.5"
         title={label}
         aria-label={label}
       />
@@ -86,6 +86,9 @@ export function AudiobookBookPanel({
   audioTimeMs,
   apiOk,
 }: Props) {
+  const wrapRef = useRef<HTMLElement>(null);
+  const [fs, setFs] = useState(false);
+
   const [alignment, setAlignment] = useState<AudiobookAlignmentManifest | null>(
     null,
   );
@@ -95,6 +98,24 @@ export function AudiobookBookPanel({
   const [pageColor, setPageColor] = useState("#fff7e7");
   const [roomBgColor, setRoomBgColor] = useState("#eadfce");
   const [bookZoom, setBookZoom] = useState(0.5);
+
+  useEffect(() => {
+    const sync = () => {
+      setFs(document.fullscreenElement === wrapRef.current);
+    };
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void el.requestFullscreen();
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -182,12 +203,30 @@ export function AudiobookBookPanel({
   }
 
   return (
-    <section className="flex min-h-0 flex-col rounded-2xl border border-line bg-white/70 shadow-card backdrop-blur-sm">
+    <section
+      ref={wrapRef}
+      className={`flex min-h-0 flex-col rounded-2xl border border-line bg-surface/80 shadow-card backdrop-blur-sm ${
+        fs ? "h-full min-h-[100dvh] rounded-none border-0" : ""
+      }`}
+    >
       <div className="flex flex-col gap-3 border-b border-line/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-5">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-ink">
           <div className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
             <h2 className="font-serif text-base sm:text-lg">Reading room</h2>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="inline-flex shrink-0 items-center justify-center rounded-lg border border-line bg-surface/90 p-1.5 text-muted transition hover:border-accent/40 hover:text-ink"
+              title={fs ? "Exit fullscreen" : "Fullscreen reading room"}
+              aria-label={fs ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {fs ? (
+                <Minimize2 className="h-4 w-4" strokeWidth={1.75} />
+              ) : (
+                <Maximize2 className="h-4 w-4" strokeWidth={1.75} />
+              )}
+            </button>
           </div>
           <label className="flex w-full min-w-0 items-center gap-2 text-[10px] text-muted sm:w-auto sm:min-w-[9rem] sm:text-xs">
             <span>Zoom</span>
@@ -206,7 +245,7 @@ export function AudiobookBookPanel({
             </span>
           </label>
         </div>
-        <div className="flex flex-wrap items-end gap-x-3 gap-y-2 justify-center sm:shrink-0 sm:justify-end">
+        <div className="flex flex-wrap items-end justify-center gap-x-3 gap-y-2 sm:shrink-0 sm:justify-end">
           <ColorControl label="Highlight" value={highlightHex} onChange={setHighlightHex} />
           <ColorControl label="Text" value={textColor} onChange={setTextColor} />
           <ColorControl label="Pages" value={pageColor} onChange={setPageColor} />
@@ -217,8 +256,12 @@ export function AudiobookBookPanel({
       <div
         className={
           isComplete
-            ? "relative h-[620px] max-h-[78vh] min-h-[460px] overflow-hidden rounded-b-2xl"
-            : "relative h-[420px] max-h-[55vh] min-h-[280px] overflow-hidden rounded-b-2xl"
+            ? fs
+              ? "relative min-h-0 flex-1 overflow-hidden rounded-none"
+              : "relative h-[620px] max-h-[78vh] min-h-[460px] overflow-hidden rounded-b-2xl"
+            : fs
+              ? "relative min-h-0 flex-1 overflow-hidden rounded-none"
+              : "relative h-[420px] max-h-[55vh] min-h-[280px] overflow-hidden rounded-b-2xl"
         }
       >
         {!isComplete && (
@@ -241,15 +284,17 @@ export function AudiobookBookPanel({
           </div>
         )}
         {isComplete && alignment && (
-          <AudiobookBook3D
-            alignment={alignment}
-            timeMs={audioTimeMs}
-            highlightHex={highlightHex}
-            textColor={textColor}
-            pageColor={pageColor}
-            roomBgColor={roomBgColor}
-            zoomScale={bookZoom}
-          />
+          <div className="absolute inset-0 min-h-0">
+            <AudiobookBook3D
+              alignment={alignment}
+              timeMs={audioTimeMs}
+              highlightHex={highlightHex}
+              textColor={textColor}
+              pageColor={pageColor}
+              roomBgColor={roomBgColor}
+              zoomScale={bookZoom}
+            />
+          </div>
         )}
       </div>
     </section>

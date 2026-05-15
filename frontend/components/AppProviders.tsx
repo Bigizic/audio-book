@@ -44,8 +44,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
             role="status"
             className={
               t.kind === "success"
-                ? "pointer-events-auto rounded-xl border border-sage/40 bg-white px-4 py-3 text-pretty text-sm leading-snug text-ink shadow-soft"
-                : "pointer-events-auto rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-pretty text-sm leading-snug text-red-950 shadow-soft"
+                ? "pointer-events-auto rounded-xl border border-sage/40 bg-surface px-4 py-3 text-pretty text-sm leading-snug text-ink shadow-soft"
+                : "pointer-events-auto rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-pretty text-sm leading-snug text-red-950 shadow-soft dark:border-red-900/60 dark:bg-red-950/45 dark:text-red-100"
             }
           >
             {t.message}

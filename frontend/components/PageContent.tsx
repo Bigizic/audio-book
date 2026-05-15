@@ -9,7 +9,7 @@ import { PageSelector } from "@/components/PageSelector";
 import { UploadZone } from "@/components/UploadZone";
 import { VoicePreview } from "@/components/VoicePreview";
 import {
-  downloadMp3Blob,
+  triggerNativeMp3Download,
   downloadMp3Url,
   fetchFeatures,
   fetchStatus,
@@ -99,6 +99,7 @@ export function PageContent() {
   const [partialWavBytes, setPartialWavBytes] = useState<number | null>(null);
   const [ttsAppendWav, setTtsAppendWav] = useState(true);
   const [savedVoiceLabel, setSavedVoiceLabel] = useState<string | null>(null);
+  const [downloadBusy, setDownloadBusy] = useState(false);
 
   const mdUp = useMdUp();
 
@@ -428,21 +429,28 @@ export function PageContent() {
     };
   }, [jobId, polling, applyStatus, notifyError]);
 
-  const onDownload = useCallback(async () => {
+  const onDownload = useCallback(() => {
     if (!jobId || !apiOk) return;
+    const name = audiobookDownloadName(fileName, voiceLabelForDownload);
+    setDownloadBusy(true);
     try {
-      const { blob } = await downloadMp3Blob(jobId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = audiobookDownloadName(fileName, voiceLabelForDownload);
-      a.click();
-      URL.revokeObjectURL(url);
+      triggerNativeMp3Download(jobId, name);
       notifySuccess("Download started — check your downloads folder.");
-    } catch {
-      notifyError("Download failed — the file may have expired.");
+    } catch (e) {
+      notifyError(
+        e instanceof Error ? e.message : "Download could not start. Try again.",
+      );
+    } finally {
+      window.setTimeout(() => setDownloadBusy(false), 1400);
     }
-  }, [apiOk, jobId, fileName, voiceLabelForDownload, notifyError, notifySuccess]);
+  }, [
+    apiOk,
+    jobId,
+    fileName,
+    voiceLabelForDownload,
+    notifyError,
+    notifySuccess,
+  ]);
 
   const onCancelJob = useCallback(async () => {
     if (!jobId || !apiOk) return;
@@ -529,13 +537,13 @@ export function PageContent() {
       <Hero />
       <main className="mx-auto md:max-w-[90%] space-y-8 px-6 py-14">
         {!apiOk && (
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-pretty text-xs leading-relaxed text-amber-950 sm:px-4 sm:py-3 sm:text-sm">
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-pretty text-xs leading-relaxed text-amber-950 dark:border-amber-800/80 dark:bg-amber-950/35 dark:text-amber-100 sm:px-4 sm:py-3 sm:text-sm">
             Point{" "}
-            <code className="break-all rounded bg-white/80 px-1 py-0.5 text-[0.7rem] sm:text-sm">
+            <code className="break-all rounded bg-surface/90 px-1 py-0.5 text-[0.7rem] sm:text-sm">
               NEXT_PUBLIC_BACKEND_URL
             </code>{" "}
             at your FastAPI server (same value you use as{" "}
-            <code className="break-all rounded bg-white/80 px-1 py-0.5 text-[0.7rem] sm:text-sm">
+            <code className="break-all rounded bg-surface/90 px-1 py-0.5 text-[0.7rem] sm:text-sm">
               BACKEND_URL
             </code>{" "}
             in docs).
@@ -611,14 +619,14 @@ export function PageContent() {
               partialWavBytes={partialWavBytes}
               sizeBytes={mp3Size}
               onDownload={onDownload}
-              busy={false}
+              downloadBusy={downloadBusy}
               finalMp3Src={finalMp3Src}
               playingVoiceId={playingVoiceId}
               setPlayingVoiceId={setPlayingVoiceId}
               onAudiobookAudioElement={setAudiobookAudioEl}
             />
             {status === "failed" && (
-              <p className="text-pretty text-xs leading-relaxed text-red-800 sm:text-sm">
+              <p className="text-pretty text-xs leading-relaxed text-red-800 dark:text-red-300 sm:text-sm">
                 {message}
               </p>
             )}

@@ -400,4 +400,5 @@ async def download(job_id: str) -> FileResponse:
         path,
         media_type="audio/mpeg",
         filename=name,
+        content_disposition_type="attachment",
     )
