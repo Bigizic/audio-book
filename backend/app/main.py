@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile
@@ -249,7 +252,7 @@ async def status_stream(job_id: str) -> StreamingResponse:
         raise HTTPException(404, "Job status streaming is disabled.")
 
     async def event_gen():
-        last: str | None = None
+        last: Optional[str] = None
         while True:
             data = job_store.get(job_id)
             if not data:

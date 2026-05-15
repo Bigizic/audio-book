@@ -2,4 +2,5 @@
 backend/app/static/voices/*
 *audiobook-backend.service*
 *tmp/
+deploy/*
 deploy/github-webhook-secret.json

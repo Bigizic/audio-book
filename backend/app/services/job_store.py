@@ -25,7 +25,7 @@ class JobStore:
         pdf_path: Path,
         original_filename: str,
         page_count: int,
-        job_id: str | None = None,
+        job_id: Optional[str] = None,
     ) -> str:
         job_id = job_id or str(uuid.uuid4())
         data: dict[str, Any] = {
