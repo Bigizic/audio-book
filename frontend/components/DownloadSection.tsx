@@ -3,7 +3,7 @@
 import { VoiceSamplePlayer } from "@/components/VoiceSamplePlayer";
 import { formatBytes } from "@/lib/format";
 import { previewAudioUrl } from "@/lib/api";
-import { Clock, Download, RefreshCw } from "lucide-react";
+import { Clock, Download, Loader2, RefreshCw } from "lucide-react";
 import {
   type Dispatch,
   type SetStateAction,
@@ -29,7 +29,8 @@ type Props = {
   partialWavBytes: number | null;
   sizeBytes: number | null;
   onDownload: () => void;
-  busy: boolean;
+  /** True while native download is being triggered (spinner on MP3 button). */
+  downloadBusy: boolean;
   finalMp3Src: string | null;
   playingVoiceId: string | null;
   setPlayingVoiceId: Dispatch<SetStateAction<string | null>>;
@@ -44,7 +45,7 @@ export function DownloadSection({
   partialWavBytes,
   sizeBytes,
   onDownload,
-  busy,
+  downloadBusy,
   finalMp3Src,
   playingVoiceId,
   setPlayingVoiceId,
@@ -220,7 +221,7 @@ export function DownloadSection({
     liveActive && previewKind === "wav" && playUrl && liveLoadedBytes !== null;
 
   return (
-    <section className="rounded-2xl border border-accent/25 bg-paper p-4 shadow-soft sm:p-6">
+    <section className="rounded-2xl border border-accent/25 bg-surface/85 p-4 shadow-soft backdrop-blur-sm sm:p-6">
       <div className="mb-3 flex items-center gap-2 text-ink sm:mb-4">
         <Download className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
         <h2 className="font-serif text-lg sm:text-xl">
@@ -274,7 +275,7 @@ export function DownloadSection({
                     ? "Fetch the longer preview from the server"
                     : "Wait for a status update with more audio"
                 }
-                className="inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-full border border-line bg-white px-4 py-2.5 text-xs font-medium text-ink shadow-card transition hover:border-accent/40 enabled:hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 sm:self-start sm:py-3 sm:text-sm"
+                className="inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-full border border-line bg-surface px-4 py-2.5 text-xs font-medium text-ink shadow-card transition hover:border-accent/40 enabled:hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 sm:self-start sm:py-3 sm:text-sm"
                 aria-label={
                   staleLive
                     ? "Load latest preview audio"
@@ -297,17 +298,21 @@ export function DownloadSection({
             <button
               type="button"
               onClick={onDownload}
-              disabled={busy}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-xs font-medium text-ink shadow-card transition hover:border-accent/40 disabled:opacity-50 sm:w-auto sm:px-6 sm:py-3 sm:text-sm"
+              disabled={downloadBusy}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-xs font-medium text-ink shadow-card transition hover:border-accent/40 disabled:cursor-wait disabled:opacity-90 sm:w-auto sm:px-6 sm:py-3 sm:text-sm"
             >
-              <Download className="h-4 w-4" />
-              Download MP3
+              {downloadBusy ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={1.75} aria-hidden />
+              ) : (
+                <Download className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+              )}
+              {downloadBusy ? "Starting download…" : "Download MP3"}
             </button>
           </div>
         ) : null}
       </div>
 
-      <div className="mt-3 flex items-start gap-2 rounded-lg bg-white/80 px-3 py-2 text-pretty text-xs text-muted sm:mt-4 sm:text-sm">
+      <div className="mt-3 flex items-start gap-2 rounded-lg bg-paper/80 px-3 py-2 text-pretty text-xs text-muted sm:mt-4 sm:text-sm dark:bg-paper/40">
         <Clock className="mt-0.5 h-4 w-4 shrink-0 text-sage" />
         <span>
           This file is available for about <strong className="text-ink">30 minutes</strong>

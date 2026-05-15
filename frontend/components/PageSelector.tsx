@@ -22,7 +22,7 @@ export function PageSelector({
   error,
 }: Props) {
   return (
-    <section className="rounded-2xl border border-line bg-white/70 p-4 shadow-card backdrop-blur-sm sm:p-6">
+    <section className="rounded-2xl border border-line bg-surface/75 p-4 shadow-card backdrop-blur-sm sm:p-6">
       <div className="mb-3 flex items-center gap-2 text-ink sm:mb-4">
         <BookMarked className="h-5 w-5 shrink-0 text-sage" strokeWidth={1.75} />
         <h2 className="font-serif text-lg sm:text-xl">Pages to narrate</h2>

@@ -1,0 +1,21 @@
+{
+  "name": "Shelf Audio",
+  "short_name": "Shelf Audio",
+  "icons": [
+    {
+      "src": "/favicon/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "theme_color": "#faf9f6",
+  "background_color": "#faf9f6",
+  "display": "standalone"
+}

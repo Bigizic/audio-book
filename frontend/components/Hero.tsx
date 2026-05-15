@@ -1,9 +1,24 @@
+import Image from "next/image";
 import { IllustrationBooks, IllustrationReader } from "@/components/Illustrations";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function Hero() {
   return (
     <header className="relative overflow-hidden border-b border-line/80 bg-paper">
-      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-12 sm:gap-10 sm:px-6 sm:py-16 md:flex-row md:items-center md:justify-between md:py-20">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 pt-4 sm:px-6 sm:pt-5">
+        <div className="flex min-w-0 items-center">
+          <Image
+            src="/shelf-audio-no-bg.png"
+            alt="Shelf Audio"
+            width={40}
+            height={40}
+            className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10"
+            priority
+          />
+        </div>
+        <ThemeToggle />
+      </div>
+      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-8 sm:gap-10 sm:px-6 sm:pb-16 sm:pt-2 md:flex-row md:items-center md:justify-between md:py-12 md:pb-20">
         <div className="max-w-xl min-w-0 space-y-4 sm:space-y-5">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted sm:text-sm sm:tracking-[0.2em]">
             Shelf Audio

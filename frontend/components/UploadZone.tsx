@@ -40,7 +40,7 @@ export function UploadZone({
   const showRemove = Boolean(fileName && onRemovePdf);
 
   return (
-    <section className="rounded-2xl border border-line bg-white/70 p-4 shadow-card backdrop-blur-sm sm:p-6">
+    <section className="rounded-2xl border border-line bg-surface/75 p-4 shadow-card backdrop-blur-sm sm:p-6">
       <div className="mb-3 flex items-center gap-2 text-ink sm:mb-4">
         <Upload className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
         <h2 className="font-serif text-lg sm:text-xl">Your book</h2>
@@ -81,7 +81,7 @@ export function UploadZone({
                   ? "Wait until generation finishes or fails"
                   : "Remove this PDF from the studio"
               }
-              className="shrink-0 rounded-lg border border-line bg-white/90 p-2 text-ink/45 transition hover:border-accent/35 hover:text-ink disabled:cursor-not-allowed disabled:opacity-35"
+              className="shrink-0 rounded-lg border border-line bg-surface/90 p-2 text-ink/45 transition hover:border-accent/35 hover:text-ink disabled:cursor-not-allowed disabled:opacity-35"
               aria-label="Remove uploaded PDF"
             >
               <Trash2 className="h-4 w-4" strokeWidth={1.75} />

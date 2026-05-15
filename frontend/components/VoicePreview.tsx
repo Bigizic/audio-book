@@ -58,7 +58,7 @@ export function VoicePreview({
 
   if (!base) {
     return (
-      <section className="rounded-2xl border border-line bg-white/70 p-4 shadow-card backdrop-blur-sm sm:p-6">
+      <section className="rounded-2xl border border-line bg-surface/75 p-4 shadow-card backdrop-blur-sm sm:p-6">
         <div className="mb-3 flex flex-wrap items-center gap-2 text-ink sm:mb-4">
           <Headphones className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
           <h2 className="font-serif text-base text-ink sm:text-lg md:text-xl">Voice &amp; language</h2>
@@ -72,7 +72,7 @@ export function VoicePreview({
   }
 
   return (
-    <section className="flex flex-col rounded-2xl border border-line bg-white/70 p-4 shadow-card backdrop-blur-sm sm:p-6 lg:p-8">
+    <section className="flex flex-col rounded-2xl border border-line bg-surface/75 p-4 shadow-card backdrop-blur-sm sm:p-6 lg:p-8">
       <header className="mb-5 flex shrink-0 flex-col gap-2 border-b border-line/80 pb-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4 sm:pb-4">
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
           <Headphones className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
@@ -94,7 +94,7 @@ export function VoicePreview({
       </div>*/}
 
       {loadError && (
-        <p className="mb-3 shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-pretty text-xs text-red-900 sm:text-sm">
+        <p className="mb-3 shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-pretty text-xs text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200 sm:text-sm">
           {loadError}
         </p>
       )}
@@ -115,7 +115,7 @@ export function VoicePreview({
                     className={`min-w-0 rounded-2xl border p-4 transition-colors sm:p-5 ${
                       checked
                         ? "border-accent/45 bg-paper shadow-soft"
-                        : "border-line bg-white/60 shadow-card"
+                        : "border-line bg-surface/55 shadow-card"
                     }`}
                   >
                     <div className="flex min-w-0 flex-col gap-3 sm:gap-4">

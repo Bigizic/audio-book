@@ -2,12 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light defaults. Dark palette when `html.dark` (Tailwind class strategy + theme toggle). */
+:root {
+  color-scheme: light dark;
+  --paper-rgb: 250 249 246;
+  --ink-rgb: 44 42 38;
+  --muted-rgb: 107 101 96;
+  --accent-rgb: 184 107 82;
+  --sage-rgb: 125 155 118;
+  --line-rgb: 232 228 220;
+  --surface-rgb: 255 255 255;
+  --voice-track-rgb: 220 215 204;
+  --voice-thumb-border-rgb: 250 249 246;
+}
+
+html.dark {
+  --paper-rgb: 18 17 16;
+  --ink-rgb: 237 232 226;
+  --muted-rgb: 154 148 140;
+  --accent-rgb: 212 140 112;
+  --sage-rgb: 132 168 124;
+  --line-rgb: 48 46 43;
+  --surface-rgb: 30 29 27;
+  --voice-track-rgb: 55 52 48;
+  --voice-thumb-border-rgb: 30 29 27;
+}
+
 body {
   @apply bg-paper text-ink antialiased;
 }
 
 ::selection {
-  @apply bg-accent/20 text-ink;
+  @apply bg-accent/25 text-ink;
 }
 
 .voices-scroll {
@@ -19,7 +45,7 @@ body {
 }
 
 .voices-scroll::-webkit-scrollbar-thumb {
-  background: rgb(44 42 38 / 0.2);
+  background: rgb(var(--ink-rgb) / 0.22);
   border-radius: 9999px;
 }
 
@@ -43,7 +69,7 @@ body {
 
 .voice-player-seek:focus-visible,
 .voice-player-vol:focus-visible {
-  outline: 2px solid rgb(125 155 118 / 0.55);
+  outline: 2px solid rgb(var(--sage-rgb) / 0.55);
   outline-offset: 3px;
   border-radius: 9999px;
 }
@@ -52,7 +78,7 @@ body {
 .voice-player-vol::-webkit-slider-runnable-track {
   height: 5px;
   border-radius: 9999px;
-  background: #dcd7cc;
+  background: rgb(var(--voice-track-rgb));
 }
 
 .voice-player-seek::-webkit-slider-thumb,
@@ -63,24 +89,24 @@ body {
   height: 13px;
   margin-top: -4px;
   border-radius: 50%;
-  border: 2px solid #faf9f6;
-  box-shadow: 0 1px 2px rgb(44 42 38 / 0.12);
+  border: 2px solid rgb(var(--voice-thumb-border-rgb));
+  box-shadow: 0 1px 2px rgb(var(--ink-rgb) / 0.15);
   box-sizing: border-box;
 }
 
 .voice-player-seek::-webkit-slider-thumb {
-  background: #b86b52;
+  background: rgb(var(--accent-rgb));
 }
 
 .voice-player-vol::-webkit-slider-thumb {
-  background: #7d9b76;
+  background: rgb(var(--sage-rgb));
 }
 
 .voice-player-seek::-moz-range-track,
 .voice-player-vol::-moz-range-track {
   height: 5px;
   border-radius: 9999px;
-  background: #dcd7cc;
+  background: rgb(var(--voice-track-rgb));
 }
 
 .voice-player-seek::-moz-range-thumb,
@@ -88,17 +114,17 @@ body {
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  border: 2px solid #faf9f6;
-  box-shadow: 0 1px 2px rgb(44 42 38 / 0.12);
+  border: 2px solid rgb(var(--voice-thumb-border-rgb));
+  box-shadow: 0 1px 2px rgb(var(--ink-rgb) / 0.15);
   box-sizing: border-box;
 }
 
 .voice-player-seek::-moz-range-thumb {
-  background: #b86b52;
+  background: rgb(var(--accent-rgb));
 }
 
 .voice-player-vol::-moz-range-thumb {
-  background: #7d9b76;
+  background: rgb(var(--sage-rgb));
 }
 
 /* Generate section — horizontal progress tracks (document / pages / words) */
@@ -137,9 +163,9 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgb(184 107 82 / 0.25),
-    rgb(125 155 118 / 0.45),
-    rgb(184 107 82 / 0.2),
+    rgb(var(--accent-rgb) / 0.25),
+    rgb(var(--sage-rgb) / 0.45),
+    rgb(var(--accent-rgb) / 0.2),
     transparent
   );
   animation: audiobook-page-shuttle 1.2s ease-in-out infinite;

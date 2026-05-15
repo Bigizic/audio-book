@@ -243,7 +243,7 @@ export function GenerateSection({
         : 0;
 
   return (
-    <section className="rounded-2xl border border-line bg-white/70 p-4 shadow-card backdrop-blur-sm sm:p-6">
+    <section className="rounded-2xl border border-line bg-surface/75 p-4 shadow-card backdrop-blur-sm sm:p-6">
       <div className="mb-3 flex items-center gap-2 text-ink sm:mb-4">
         <Sparkles className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
         <h2 className="font-serif text-lg sm:text-xl">Make the audiobook</h2>
@@ -308,7 +308,7 @@ export function GenerateSection({
                 <button
                   type="button"
                   onClick={onCancelJob}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-full border border-line bg-white px-4 py-2 text-xs font-medium text-ink/70 shadow-card transition hover:border-red-200 hover:bg-red-50/80 hover:text-red-900 sm:self-start sm:py-2.5 sm:text-sm"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-full border border-line bg-surface px-4 py-2 text-xs font-medium text-ink/70 shadow-card transition hover:border-red-300 hover:bg-red-50/90 hover:text-red-900 dark:hover:border-red-800 dark:hover:bg-red-950/50 dark:hover:text-red-200 sm:self-start sm:py-2.5 sm:text-sm"
                   aria-label="Cancel generation"
                 >
                   <XCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
