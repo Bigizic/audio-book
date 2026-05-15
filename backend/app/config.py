@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -34,15 +37,15 @@ class Settings(BaseSettings):
     ffmpeg_binary: str = "ffmpeg"
     # --- GitHub deploy webhook (optional) ---
     """Plain secret; overrides file if both set. Same value as GitHub webhook "Secret"."""
-    github_webhook_secret: str | None = None
+    github_webhook_secret: Optional[str] = None
     """JSON file: {\"secret\": \"...\"}. Gitignored on VPS; copy from github-webhook-secret.example.json."""
-    github_webhook_secret_file: Path | None = None
+    github_webhook_secret_file: Optional[Path] = None
     """Repo root on the VPS (git checkout)."""
     deploy_root: Path = Path("/opt/audiobook")
     """If set, run this script via sudo -n after git pull; default deploy_root/deploy/vps-pull-and-update.sh."""
-    deploy_pull_script: Path | None = None
+    deploy_pull_script: Optional[Path] = None
     """Optional POST after deploy (e.g. https://ntfy.sh/your-topic) with JSON {deploy_ok, message}."""
-    deploy_notify_url: str | None = None
+    deploy_notify_url: Optional[str] = None
     """When True, log current process RSS (MiB) at PDF read and Piper TTS (requires psutil)."""
     memory_usage_debug: bool = False
 

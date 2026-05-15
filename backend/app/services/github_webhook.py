@@ -11,12 +11,14 @@ import subprocess
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
-def load_webhook_secret(secret_plain: str | None, secret_file: Path | None) -> str | None:
+def load_webhook_secret(
+    secret_plain: Optional[str], secret_file: Optional[Path]
+) -> Optional[str]:
     if secret_plain and secret_plain.strip():
         return secret_plain.strip()
     if secret_file is not None and secret_file.is_file():
@@ -31,7 +33,9 @@ def load_webhook_secret(secret_plain: str | None, secret_file: Path | None) -> s
     return None
 
 
-def verify_github_signature(body: bytes, signature_header: str | None, secret: str) -> bool:
+def verify_github_signature(
+    body: bytes, signature_header: Optional[str], secret: str
+) -> bool:
     if not signature_header or not signature_header.startswith("sha256="):
         return False
     expected = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()

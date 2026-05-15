@@ -9,6 +9,7 @@ import logging
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Optional
 
 from app.config import settings
 
@@ -56,7 +57,7 @@ def _needs_onnx(path: Path) -> bool:
         return True
 
 
-def _needs_json(path: Path | None) -> bool:
+def _needs_json(path: Optional[Path]) -> bool:
     if path is None:
         return False
     if not path.is_file():
