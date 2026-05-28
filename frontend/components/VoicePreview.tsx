@@ -105,14 +105,14 @@ export function VoicePreview({
             <h3 className="mb-3 font-serif text-sm text-ink sm:mb-4 sm:text-base md:text-lg">
               {lang}
             </h3>
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-4">
+            <ul className="flex flex-wrap gap-4">
               {(byLanguage.get(lang) ?? []).map((v) => {
                 const checked = selectedVoiceId === v.voice_id;
                 const audioSrc = voiceSampleFullUrl(v.sample_url);
                 return (
                   <li
                     key={v.voice_id}
-                    className={`min-w-0 rounded-2xl border p-4 transition-colors sm:p-5 ${
+                    className={`min-w-[min(100%,18rem)] flex-[1_1_20rem] max-w-full rounded-2xl border p-4 transition-colors sm:min-w-[min(100%,20rem)] sm:flex-[1_1_22rem] sm:p-5 lg:flex-[1_1_24rem] ${
                       checked
                         ? "border-accent/45 bg-paper shadow-soft"
                         : "border-line bg-surface/55 shadow-card"
