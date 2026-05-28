@@ -579,6 +579,7 @@ export function PageContent() {
                   isComplete={downloadComplete}
                   hasPdfContext={Boolean(jobId)}
                   audioTimeMs={audiobookTimeMs}
+                  audiobookAudioEl={audiobookAudioEl}
                   apiOk={apiOk}
                 />
               </div>
@@ -643,6 +644,7 @@ export function PageContent() {
                 isComplete={downloadComplete}
                 hasPdfContext={Boolean(jobId)}
                 audioTimeMs={audiobookTimeMs}
+                audiobookAudioEl={audiobookAudioEl}
                 apiOk={apiOk}
               />
             </div>

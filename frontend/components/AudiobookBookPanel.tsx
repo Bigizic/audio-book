@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { AudiobookFullscreenPlayback } from "@/components/AudiobookFullscreenPlayback";
 import { BookOpen, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchAudiobookAlignment } from "@/lib/api";
@@ -54,13 +55,13 @@ function ColorControl({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex shrink-0 flex-col items-start gap-1 text-[10px] text-muted sm:text-xs">
-      <span className="truncate">{label}</span>
+    <label className="flex min-w-0 flex-col items-center gap-1.5 text-center text-[10px] text-muted sm:text-xs">
+      <span className="w-full truncate">{label}</span>
       <input
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-7 w-12 cursor-pointer rounded border border-line bg-surface p-0.5"
+        className="h-8 w-full max-w-[3.25rem] cursor-pointer rounded border border-line bg-surface p-0.5"
         title={label}
         aria-label={label}
       />
@@ -76,6 +77,8 @@ type Props = {
   hasPdfContext: boolean;
   /** Wall-clock ms from HTMLAudioElement (slider / playback) */
   audioTimeMs: number;
+  /** Shared with DownloadSection preview player (fullscreen toolbar controls). */
+  audiobookAudioEl: HTMLAudioElement | null;
   apiOk: boolean;
 };
 
@@ -84,6 +87,7 @@ export function AudiobookBookPanel({
   isComplete,
   hasPdfContext,
   audioTimeMs,
+  audiobookAudioEl,
   apiOk,
 }: Props) {
   const wrapRef = useRef<HTMLElement>(null);
@@ -209,49 +213,59 @@ export function AudiobookBookPanel({
         fs ? "h-full min-h-[100dvh] rounded-none border-0" : ""
       }`}
     >
-      <div className="flex flex-col gap-3 border-b border-line/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-5">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-ink">
-          <div className="flex items-center gap-2">
+      <header className="flex min-w-0 flex-col gap-3 border-b border-line/70 px-4 py-3 sm:px-5">
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             <BookOpen className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} />
-            <h2 className="font-serif text-base sm:text-lg">Reading room</h2>
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="inline-flex shrink-0 items-center justify-center rounded-lg border border-line bg-surface/90 p-1.5 text-muted transition hover:border-accent/40 hover:text-ink"
-              title={fs ? "Exit fullscreen" : "Fullscreen reading room"}
-              aria-label={fs ? "Exit fullscreen" : "Enter fullscreen"}
-            >
-              {fs ? (
-                <Minimize2 className="h-4 w-4" strokeWidth={1.75} />
-              ) : (
-                <Maximize2 className="h-4 w-4" strokeWidth={1.75} />
-              )}
-            </button>
+            <h2 className="truncate font-serif text-base text-ink sm:text-lg">
+              Reading room
+            </h2>
           </div>
-          <label className="flex w-full min-w-0 items-center gap-2 text-[10px] text-muted sm:w-auto sm:min-w-[9rem] sm:text-xs">
-            <span>Zoom</span>
-            <input
-              type="range"
-              min={0.4}
-              max={1.2}
-              step={0.05}
-              value={bookZoom}
-              onChange={(e) => setBookZoom(Number(e.target.value))}
-              className="h-2 min-w-0 flex-1 cursor-pointer accent-accent"
-              aria-label="Book zoom"
-            />
-            <span className="w-8 text-right font-mono tabular-nums">
-              {Math.round(bookZoom * 100)}%
-            </span>
-          </label>
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-line bg-surface/90 p-1.5 text-muted transition hover:border-accent/40 hover:text-ink"
+            title={fs ? "Exit fullscreen" : "Fullscreen reading room"}
+            aria-label={fs ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {fs ? (
+              <Minimize2 className="h-4 w-4" strokeWidth={1.75} />
+            ) : (
+              <Maximize2 className="h-4 w-4" strokeWidth={1.75} />
+            )}
+          </button>
         </div>
-        <div className="flex flex-wrap items-end justify-center gap-x-3 gap-y-2 sm:shrink-0 sm:justify-end">
+
+        <label className="flex min-w-0 items-center gap-2 text-[10px] text-muted sm:text-xs">
+          <span className="shrink-0">Zoom</span>
+          <input
+            type="range"
+            min={0.4}
+            max={1.2}
+            step={0.05}
+            value={bookZoom}
+            onChange={(e) => setBookZoom(Number(e.target.value))}
+            className="h-2 min-w-0 flex-1 cursor-pointer accent-accent"
+            aria-label="Book zoom"
+          />
+          <span className="w-9 shrink-0 text-right font-mono tabular-nums text-ink">
+            {Math.round(bookZoom * 100)}%
+          </span>
+        </label>
+
+        <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           <ColorControl label="Highlight" value={highlightHex} onChange={setHighlightHex} />
           <ColorControl label="Text" value={textColor} onChange={setTextColor} />
           <ColorControl label="Pages" value={pageColor} onChange={setPageColor} />
           <ColorControl label="Room" value={roomBgColor} onChange={setRoomBgColor} />
         </div>
-      </div>
+
+        {fs ? (
+          <div className="min-w-0 border-t border-line/60 pt-3">
+            <AudiobookFullscreenPlayback audioEl={audiobookAudioEl} />
+          </div>
+        ) : null}
+      </header>
 
       <div
         className={

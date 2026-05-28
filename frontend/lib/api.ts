@@ -69,9 +69,14 @@ export async function fetchVoices(): Promise<VoiceItem[]> {
   return res.json();
 }
 
-/** sample_url from API is relative, e.g. /voices/.../sample */
+/** sample_url from API is relative to the shelf-audio mount (e.g. /voices/.../sample). */
 export function voiceSampleFullUrl(sampleUrl: string): string {
-  return `${API_BASE}${sampleUrl}`;
+  const base = API_BASE.replace(/\/$/, "");
+  let path = sampleUrl.startsWith("/") ? sampleUrl : `/${sampleUrl}`;
+  if (base.endsWith("/shelf-audio") && path.startsWith("/shelf-audio")) {
+    path = path.slice("/shelf-audio".length) || "/";
+  }
+  return `${base}${path}`;
 }
 
 export async function uploadPdf(file: File): Promise<{
