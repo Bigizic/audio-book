@@ -20,7 +20,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Shelf Audio — Book to Audiobook",
+  title: "Shelf Audio - Book to Audiobook",
   description:
     "Turn any PDF into a warm, listenable audiobook with natural AI voices.",
   manifest: "/favicon/site.webmanifest",
